@@ -1,6 +1,6 @@
 <?php
 /*
-    command-line-arguments.php
+    File: command-line-arguments.php
     Product:  iplog-to-sql-table
     Rev 2014.0905.2200
     by ckthomaston@gmail.com

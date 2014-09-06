@@ -1,7 +1,7 @@
 <?php
 
 /*
-    iplog-file.php
+    File: iplog-file.php
     Product:  iplog-to-sql-table
     Rev 2014.0905.2200
     by ckthomaston@gmail.com

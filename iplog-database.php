@@ -1,6 +1,6 @@
 <?php
 /*
-    iplog-database.php
+    File: iplog-database.php
     Product:  iplog-to-sql-table
     Rev 2014.0905.2200
     by ckthomaston@gmail.com
