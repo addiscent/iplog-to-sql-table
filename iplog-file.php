@@ -92,6 +92,7 @@
 
 define("IPLF_ERR_UNABLE_TO_OPEN_FILE", 101);
 define("IPLF_EOF_IPLOG", 102);
+define("IPLF_ERR_RECORD_LINE_NULL", 103);
 
 // if a parsed int field is "-", change it to -1
 define("PAGESIZE_ADJUST_VALUE", -1);
@@ -189,12 +190,12 @@ private $http_methods = array
         return $ip_evnt_flds;
     }
     
-    private function dbg_echo ($string, $do_echo = FALSE) {
+    private function dbg_echo ($string = NULL, $do_echo = FALSE) {
         if ($do_echo)
             echo $string;
     }
     
-    private function is_http_method($method) {
+    private function is_http_method ($method = NULL) {
         foreach ($this->http_methods as $a_method) {
             dbg_echo ("\nMethod is : $method\n", FALSE);
             dbg_echo ("a_method is : $a_method\n", FALSE);
@@ -210,7 +211,7 @@ private $http_methods = array
     //                   up to, but not including, $strstr_arg
     //      Note: strstr() leaves $strstr_arg match not removed, must use
     //            ltrim() to remove it
-    private function ltrim_to_data ($in_string, $strstr_arg) {
+    private function ltrim_to_data ($in_string = NULL, $strstr_arg = NULL) {
         $str_remain = strstr ($in_string, $strstr_arg);
         $str_remain = ltrim ($str_remain, $strstr_arg);
         return $str_remain;
@@ -218,7 +219,7 @@ private $http_methods = array
     
     // Return an array containing IP log file line fields.
     // Returns NULL if function cannot correctly populate an array to return
-    private function parse_lfln_array($ip_record_line, $display_trace = FALSE) {
+    private function parse_lfln_array ($ip_record_line, $display_trace = FALSE) {
         
         //   Parsed fields from IP log file
         $ip_evnt_flds = array

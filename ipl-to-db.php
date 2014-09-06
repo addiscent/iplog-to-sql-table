@@ -238,7 +238,7 @@ while ($logfile_readln_attempts++ < $max_file_lines) {
             dbg_echo ("Cannot continue, exiting\n\n", TRUE);
             exit (CLI_ERR_UNABLE_TO_CONNECT_DB);
         }
-
+        
         if ($insertion_result == IPLDB_ERR_DB_INSERTION_FAIL) {
             $last_failed_insertion_message = $IPlogDatabase->get_ipldb_error();
             dbg_echo ("Error during record INSERT : " . $last_failed_insertion_message . "\n", TRUE);
@@ -260,10 +260,10 @@ while ($logfile_readln_attempts++ < $max_file_lines) {
             dbg_echo ("Insertion failed, record not added. Current fail count: $insert_fail_count\n\n", $full_trace_output);
             if ($insert_fail_break)
                 break;
-        } else {
-            dbg_echo ("1 record added to sql table.\n\n", $full_trace_output);
-            $lines_inserted++;
-        }
+        } 
+        
+        dbg_echo ("1 record added to sql table.\n\n", $full_trace_output);
+        $lines_inserted++;
     }
 }
 

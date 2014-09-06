@@ -37,8 +37,9 @@
 */
 
 define("IPLDB_ERR_NONE", 100);
-define("IPLDB_ERR_UNABLE_TO_CONNECT_DB", 103);
-define("IPLDB_ERR_DB_INSERTION_FAIL", 104);
+define("IPLDB_ERR_UNABLE_TO_CONNECT_DB", 101);
+define("IPLDB_ERR_DB_INSERTION_FAIL", 102);
+define("IPLDB_ERR_IPL_RECORD_NULL", 103);
 
 class IPlogDatabase {
     
@@ -63,8 +64,11 @@ class IPlogDatabase {
             $this->dbg_echo ("Disconnected from MySQL.\n", TRUE);
     }
 
-    public function insert_iplog_record ($ip_log_record, $full_trace_output = FALSE) 
+    public function insert_iplog_record ($ip_log_record = NULL, $full_trace_output = FALSE) 
     {
+        if (!$ip_log_record)
+            return IPLDB_ERR_IPL_RECORD_NULL;
+            
         if ($this->db_host && $this->db_user && $this->db_name && !$this->db_connection) {
             $this->db_connection =  new mysqli
                                             (
@@ -147,7 +151,7 @@ class IPlogDatabase {
         return $this->last_failed_insertion_message;
     }
     
-    private function dbg_echo ($string, $do_echo = FALSE) {
+    private function dbg_echo ($string = NULL, $do_echo = FALSE) {
         if ($do_echo)
             echo $string;
     }
