@@ -13,9 +13,9 @@ Description:
     table.  However, further attempts will be made to fetch, parse, and insert
     subsequent lines and records, until EOF.
 
-    Usage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername\n"
-            dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname\n"
-            [maxl=number] [pbrk=ON] [ibrk=ON]\n"
+    Usage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername
+            dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname
+            [maxl=number] [pbrk=ON] [ibrk=ON] [maxverb=ON]
             
     Where:  fname=   IP log file name, (required)
            dhname=   SQL db server, (host), name, (required)
@@ -30,11 +30,11 @@ Description:
                      is encountered, (optional)
            ibrk=ON   Causes exit if an insertion error
                      is encountered, (optional)
-        maxverb=ON   Enables all tracing echo
+        maxverb=ON   Enables all tracing echo, (optional)
 
 
-    The "maxl" option is typically not useful for production, it is provided
-    as a convenience for testing and debugging.
+    The "maxl" and "maxverb" options typically are not used in production,
+    they are provided as a convenience for testing and debugging.
 
 Files:
 
