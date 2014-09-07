@@ -3,7 +3,7 @@
 /*
     File: iplog-file.php
     Product:  iplog-to-sql-table
-    Rev 2014.0905.2200
+    Rev 2014.0907.1315
     by ckthomaston@gmail.com
    
     Description:
@@ -245,7 +245,7 @@ private $http_methods = array
         $ip_evnt_flds["IPaddress"] = strstr ($string_remainder, " ", TRUE);
         $long = ip2long ($ip_evnt_flds["IPaddress"]);
         if (($long == -1) || ($long === FALSE)) {
-            dbg_echo ("\nIPaddress field is invalid - aborting parsing\n", TRUE);
+            dbg_echo ("\nIPaddress field is invalid - parsing aborted for this record\n", TRUE);
             return NULL;
         }
         dbg_echo ("IPaddress : " . $ip_evnt_flds["IPaddress"] . "\n", $display_trace);
@@ -257,7 +257,7 @@ private $http_methods = array
         // get the date-time stamp string. If malformed, abort
         $ip_evnt_flds["DateTime"] = strstr ($string_remainder, "]", TRUE);
         if ($ip_evnt_flds["DateTime"] == FALSE) {
-            dbg_echo ("\nDateTime field is invalid - aborting parsing\n", TRUE);
+            dbg_echo ("\nDateTime field is invalid - parsing aborted for this record\n", TRUE);
             return NULL;
         }
         dbg_echo ("DateTime : " . $ip_evnt_flds["DateTime"] . "\n", $display_trace);
@@ -274,7 +274,7 @@ private $http_methods = array
             $method = strstr ($ip_evnt_flds["MethodURI"], " ", TRUE);
             if (!$this->is_http_method($method)) {
                 $methodURI = $ip_evnt_flds["MethodURI"];
-                dbg_echo ("\nMethod : $methodURI, invalid - aborting parsing\n", TRUE);
+                dbg_echo ("\nInvalid Method : '$methodURI' - parsing aborted for this record\n", TRUE);
                 return NULL;
             }
         }
@@ -288,7 +288,7 @@ private $http_methods = array
         // If malformed, abort
         $ip_evnt_flds["Status"] = strstr($string_remainder, " ", TRUE);
         if (!is_numeric ($ip_evnt_flds["Status"])) {
-            dbg_echo ("\nStatus field is invalid - aborting parsing\n", TRUE);
+            dbg_echo ("\nStatus field is invalid - parsing aborted for this record\n", TRUE);
             return NULL;
         }
         dbg_echo ("Status : " . $ip_evnt_flds["Status"] . "\n", $display_trace);
@@ -308,7 +308,7 @@ private $http_methods = array
         }
         else {
             if (!is_numeric ($ip_evnt_flds["PageSize"])) {
-                dbg_echo ("\nPageSize field is invalid - aborting parsing\n", TRUE);
+                dbg_echo ("\nPageSize field is invalid - parsing aborted for this record\n", TRUE);
                 return NULL;
             }
             dbg_echo ("PageSize : " . $ip_evnt_flds["PageSize"] . "\n", $display_trace);
@@ -321,7 +321,7 @@ private $http_methods = array
         // get the Referer string.  If malformed, abort
         $ip_evnt_flds["Referer"] = strstr($string_remainder, '"', TRUE);
         if ($ip_evnt_flds["Referer"] == FALSE) {
-            dbg_echo ("\nReferer field is malformed - aborting parsing\n\n", TRUE);
+            dbg_echo ("\nReferer field is malformed - parsing aborted for this record\n\n", TRUE);
             return NULL;
         }
         dbg_echo ("Referer : " . $ip_evnt_flds["Referer"] . "\n", $display_trace);
@@ -333,7 +333,7 @@ private $http_methods = array
         // get the agent string. If malformed, abort
         $ip_evnt_flds["Agent"] = strstr($string_remainder, '"', TRUE);
         if ($ip_evnt_flds["Agent"] == FALSE) {
-            dbg_echo ("\nAgent field is malformed - aborting parsing\n", TRUE);
+            dbg_echo ("\nAgent field is malformed - parsing aborted for this record\n", TRUE);
             return NULL;
         }
         dbg_echo ("Agent : " . $ip_evnt_flds["Agent"] . "\n\n", $display_trace);

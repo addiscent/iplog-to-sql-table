@@ -2,7 +2,7 @@
 /*
     File: ipl-to-db.php
     Product:  iplog-to-sql-table
-    Rev 2014.0905.2200
+    Rev 2014.0907.1315
     by ckthomaston@gmail.com
    
     Description:
@@ -80,7 +80,7 @@ function dbg_echo ($string, $do_echo = FALSE) {
 // mark time for elapsed time displayed in Summary
 $start_time = time();
 
-echo "ipl-to-db.php v2014.0905.2200\n"
+echo "ipl-to-db.php v2014.0907.1315\n"
     . "Inserts parsed IP log file line fields into an SQL db.\n";
 
 // put command line arguments into the $_GET variable

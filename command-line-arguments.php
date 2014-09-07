@@ -2,7 +2,7 @@
 /*
     File: command-line-arguments.php
     Product:  iplog-to-sql-table
-    Rev 2014.0905.2200
+    Rev 2014.0907.1315
     by ckthomaston@gmail.com
    
     Description:
@@ -162,7 +162,7 @@ class CommandLineArguments {
             . "        dname=   SQL db name, (required)\n"
             . "        tname=   SQL db table, (required)\n"
             . "        hname=   Host domain name or IP address, (required)\n"
-            . "      maxl=int   Maximum number of lines to\n"
+            . "         maxl=   Integer, maximum number of lines to\n"
             . "                 read from IP log file, (optional)\n"
             . "       pbrk=ON   Causes  exit if a parse error\n"
             . "                 is encountered, (optional)\n"
