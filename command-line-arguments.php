@@ -124,7 +124,7 @@ class CommandLineArguments {
             // Typically set to a low value during debug, very high in production
             if (array_key_exists ( 'maxl', $CLA_GET )) {
                 $this->max_file_lines = $CLA_GET['maxl'];
-                $this->dbg_echo ("Maximum number of lines specified : " . $this->max_file_lines . "\n", TRUE);
+                $this->dbg_echo ("\nMaximum number of lines specified : " . $this->max_file_lines . "\n", TRUE);
             }
             else {
                 $this->max_file_lines = 1.0e9; // attempt some very large number of lines before EOF
@@ -134,19 +134,22 @@ class CommandLineArguments {
             // user may want to break on parse fail
             if (array_key_exists ( 'pbrk', $CLA_GET )) {
                 $this->parse_fail_break = $CLA_GET['pbrk'];
-                $this->dbg_echo ("\nIP log file parse-fail-break set to break.\n", TRUE);
+                if ($this->parse_fail_break == "ON")
+                    $this->dbg_echo ("IP log file parse-fail-break set to break.\n", TRUE);
             }
     
             // user may want to break on insertion into SQL table fail
             if (array_key_exists ( 'ibrk', $CLA_GET )) {
                 $this->insert_fail_break = $CLA_GET['ibrk'];
-                $this->dbg_echo ("SQL record insertion-fail-break set to break.\n", TRUE);
+                if ($this->insert_fail_break == "ON")
+                    $this->dbg_echo ("SQL record insertion-fail-break set to break.\n", TRUE);
             }
     
             // user may want max verbosity
             if (array_key_exists ( 'maxverb', $CLA_GET )) {
                 $this->full_trace_output = $CLA_GET['maxverb'];
-                $this->dbg_echo ("Output tracing set to max verbosity.\n", TRUE);
+                if ($this->full_trace_output == "ON")
+                    $this->dbg_echo ("Output tracing set to max verbosity.\n", TRUE);
             }
         }
     }

@@ -162,7 +162,7 @@ private $http_methods = array
         }
     }
     
-    public function get_iplog_record (&$ip_record_line,  $full_trace_output =  FALSE) {
+    public function get_iplog_record ($ip_record_id, &$ip_record_line,  $full_trace_output =  FALSE) {
         
         // open the IP log file if this is the first get_iplog_record()
         if ($this->ip_log_filename && !$this->ip_log_filehandle) {
@@ -180,12 +180,10 @@ private $http_methods = array
         if (!$ip_record_line) {
             dbg_echo ( "\nIP log file returned EOF, done parsing records.\n", TRUE);
             return IPLF_EOF_IPLOG; // no record to return
-        if ($full_trace_output)
-            dbg_echo ("\nIP Log Line : " . $ip_record_line . "\n", TRUE);
         }
     
         // parse and validate fields from IP record line
-        $ip_evnt_flds = $this->parse_lfln_array($ip_record_line, $full_trace_output);
+        $ip_evnt_flds = $this->parse_lfln_array($ip_record_id,$ip_record_line, $full_trace_output);
 
         return $ip_evnt_flds;
     }
@@ -219,7 +217,7 @@ private $http_methods = array
     
     // Return an array containing IP log file line fields.
     // Returns NULL if function cannot correctly populate an array to return
-    private function parse_lfln_array ($ip_record_line, $display_trace = FALSE) {
+    private function parse_lfln_array ($ip_record_id, $ip_record_line, $display_trace = FALSE) {
         
         //   Parsed fields from IP log file
         $ip_evnt_flds = array
@@ -240,12 +238,14 @@ private $http_methods = array
          // the code below walks through $string_remainder during parsing
         $string_remainder = $ip_record_line;
         
+        dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", $display_trace);
+        
         // get the IP address string, by retrieving the string up to the first
         // blank space, (exclusive). If malformed, abort
         $ip_evnt_flds["IPaddress"] = strstr ($string_remainder, " ", TRUE);
         $long = ip2long ($ip_evnt_flds["IPaddress"]);
         if (($long == -1) || ($long === FALSE)) {
-            dbg_echo ("\nIPaddress field is invalid - parsing aborted for this record\n", TRUE);
+            dbg_echo ("IPaddress field is invalid - parsing aborted for this record\n", TRUE);
             return NULL;
         }
         dbg_echo ("IPaddress : " . $ip_evnt_flds["IPaddress"] . "\n", $display_trace);
@@ -257,7 +257,9 @@ private $http_methods = array
         // get the date-time stamp string. If malformed, abort
         $ip_evnt_flds["DateTime"] = strstr ($string_remainder, "]", TRUE);
         if ($ip_evnt_flds["DateTime"] == FALSE) {
-            dbg_echo ("\nDateTime field is invalid - parsing aborted for this record\n", TRUE);
+            if (!$display_trace) // don't show again if already full tracing
+                dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
+            dbg_echo ("DateTime field is invalid - parsing aborted for this record\n", TRUE);
             return NULL;
         }
         dbg_echo ("DateTime : " . $ip_evnt_flds["DateTime"] . "\n", $display_trace);
@@ -274,7 +276,9 @@ private $http_methods = array
             $method = strstr ($ip_evnt_flds["MethodURI"], " ", TRUE);
             if (!$this->is_http_method($method)) {
                 $methodURI = $ip_evnt_flds["MethodURI"];
-                dbg_echo ("\nInvalid Method : '$methodURI' - parsing aborted for this record\n", TRUE);
+                if (!$display_trace) // don't show again if already full tracing
+                    dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
+                dbg_echo ("Invalid Method : '$methodURI' - parsing aborted for this record\n", TRUE);
                 return NULL;
             }
         }
@@ -288,7 +292,9 @@ private $http_methods = array
         // If malformed, abort
         $ip_evnt_flds["Status"] = strstr($string_remainder, " ", TRUE);
         if (!is_numeric ($ip_evnt_flds["Status"])) {
-            dbg_echo ("\nStatus field is invalid - parsing aborted for this record\n", TRUE);
+            if (!$display_trace) // don't show again if already full tracing
+                dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
+            dbg_echo ("Status field is invalid - parsing aborted for this record\n", TRUE);
             return NULL;
         }
         dbg_echo ("Status : " . $ip_evnt_flds["Status"] . "\n", $display_trace);
@@ -308,7 +314,9 @@ private $http_methods = array
         }
         else {
             if (!is_numeric ($ip_evnt_flds["PageSize"])) {
-                dbg_echo ("\nPageSize field is invalid - parsing aborted for this record\n", TRUE);
+                if (!$display_trace) // don't show again if already full tracing
+                    dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
+                dbg_echo ("PageSize field is invalid - parsing aborted for this record\n", TRUE);
                 return NULL;
             }
             dbg_echo ("PageSize : " . $ip_evnt_flds["PageSize"] . "\n", $display_trace);
@@ -321,7 +329,9 @@ private $http_methods = array
         // get the Referer string.  If malformed, abort
         $ip_evnt_flds["Referer"] = strstr($string_remainder, '"', TRUE);
         if ($ip_evnt_flds["Referer"] == FALSE) {
-            dbg_echo ("\nReferer field is malformed - parsing aborted for this record\n\n", TRUE);
+            if (!$display_trace) // don't show again if already full tracing
+                dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
+            dbg_echo ("Referer field is malformed - parsing aborted for this record\n\n", TRUE);
             return NULL;
         }
         dbg_echo ("Referer : " . $ip_evnt_flds["Referer"] . "\n", $display_trace);
@@ -333,10 +343,12 @@ private $http_methods = array
         // get the agent string. If malformed, abort
         $ip_evnt_flds["Agent"] = strstr($string_remainder, '"', TRUE);
         if ($ip_evnt_flds["Agent"] == FALSE) {
-            dbg_echo ("\nAgent field is malformed - parsing aborted for this record\n", TRUE);
+            if (!$display_trace) // don't show again if already full tracing
+                dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
+            dbg_echo ("Agent field is malformed - parsing aborted for this record\n", TRUE);
             return NULL;
         }
-        dbg_echo ("Agent : " . $ip_evnt_flds["Agent"] . "\n\n", $display_trace);
+        dbg_echo ("Agent : " . $ip_evnt_flds["Agent"] . "\n", $display_trace);
         
         return $ip_evnt_flds;
     }

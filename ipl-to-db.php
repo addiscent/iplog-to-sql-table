@@ -60,9 +60,9 @@
         owners.
 */
 
-include "command-line-arguments.php";
-include "iplog-file.php";
-include "iplog-database.php";
+require "command-line-arguments.php";
+require "iplog-file.php";
+require "iplog-database.php";
 
 define("CLI_ERR_NONE", 0);
 define("CLI_ERR_MISSING_REQUIRED_ARGUMENT", 101);
@@ -182,19 +182,15 @@ $ip_record_line = NULL;
 // misc for IP log file working stats
 $logfile_readln_attempts = 0;
 $parse_fail_count = 0;
-$last_parse_fail_record_id = 0;
-$last_failed_parse_line = "NONE";
 
 // misc for SQL table insertion working stats
 $lines_inserted = 0;
 $insert_fail_count = 0;
-$last_insert_fail_record_id = 0;
-$last_failed_insertion_message = "NONE";
 
 // process up to $max_file_lines in the IP log file.
 while ($logfile_readln_attempts++ < $max_file_lines) {
 
-    $ip_evnt_flds = $IPlogFile->get_iplog_record($ip_record_line, $full_trace_output);
+    $ip_evnt_flds = $IPlogFile->get_iplog_record($logfile_readln_attempts, $ip_record_line, $full_trace_output);
     
     if ($ip_evnt_flds == IPLF_ERR_UNABLE_TO_OPEN_FILE) {
         dbg_echo ("Cannot continue, exiting\n\n", TRUE);
@@ -210,16 +206,12 @@ while ($logfile_readln_attempts++ < $max_file_lines) {
     // parse break set, continue to read and parse next IP log file record
     if (!$ip_evnt_flds) {
         $parse_fail_count++;
-        $last_parse_fail_record_id = $logfile_readln_attempts;
-        $last_failed_parse_line = $ip_record_line;
-        dbg_echo ("IP log file line number : $last_parse_fail_record_id\n", TRUE);
-        dbg_echo ("IP log file line : $ip_record_line\n\n", TRUE);
+        dbg_echo ("IP log file line contents : $ip_record_line"
+            . "IP log file line parse failed, skipping this line without inserting into SQL table.\n", TRUE);
         if ($parse_fail_break) {
-            dbg_echo ("IP log file line parse failed, no more IP log lines will be read.\n\n", TRUE);
+            dbg_echo ("pbrk==ON: IP log file line parse failed, no more IP log lines will be read.\n", TRUE);
             break;
         }
-        else
-            dbg_echo ("IP log file line parse failed, skipping this line without inserting into SQL table.\n\n", $full_trace_output);
     } else { // we have a populated $ip_evnt_flds array, insert it into the db
         $ip_log_record["IPEventNumber"] = $ip_event_number;
         $ip_log_record["IPaddress"] = $ip_evnt_flds["IPaddress"];
@@ -240,8 +232,8 @@ while ($logfile_readln_attempts++ < $max_file_lines) {
         }
         
         if ($insertion_result == IPLDB_ERR_DB_INSERTION_FAIL) {
-            $last_failed_insertion_message = $IPlogDatabase->get_ipldb_error();
-            dbg_echo ("Error during record INSERT : " . $last_failed_insertion_message . "\n", TRUE);
+            $failed_insertion_message = $IPlogDatabase->get_ipldb_error();
+            dbg_echo ("\nError during record INSERT : " . $failed_insertion_message . "\n", TRUE);
             dbg_echo (
                 "Dump SQL insertion query\n" .
                 "   IPEventNumber : $ip_log_record[IPEventNumber]\n" .
@@ -253,17 +245,18 @@ while ($logfile_readln_attempts++ < $max_file_lines) {
                 "   Referer : $ip_log_record[Referer]\n" .
                 "   Agent : $ip_log_record[Agent]\n" .
                 "   ThisHost : $ip_log_record[ThisHost]\n" .
-                "   InsertionTime : $ip_log_record[InsertionTime]\n\n"
+                "   InsertionTime : $ip_log_record[InsertionTime]\n"
                 , TRUE);
             $insert_fail_count++;
-            $last_insert_fail_record_id = $logfile_readln_attempts;
-            dbg_echo ("Insertion failed, record not added. Current fail count: $insert_fail_count\n\n", $full_trace_output);
-            if ($insert_fail_break)
+            dbg_echo ("Insertion failed, record not added. Current insertion fail count: $insert_fail_count\n", $full_trace_output);
+            if ($insert_fail_break) {
+                dbg_echo ("ibrk==ON: SQL insertion failed, no more IP log lines will be read.\n", TRUE);
                 break;
+            }
         } 
         
-        dbg_echo ("1 record added to sql table.\n\n", $full_trace_output);
         $lines_inserted++;
+        dbg_echo ("This record added to SQL table.\n", $full_trace_output);
     }
 }
 
@@ -279,15 +272,6 @@ dbg_echo ("    IP log file lines read : $logfile_readln_attempts\n", TRUE);
 dbg_echo ("    IP log line parse or validation errors : $parse_fail_count\n", TRUE);
 dbg_echo ("    Records inserted into SQL table : $lines_inserted\n", TRUE);
 dbg_echo ("    SQL insertion errors : $insert_fail_count\n\n", TRUE);
-dbg_echo ("  Failed Record IDs and Messages\n", TRUE);
-if ($last_parse_fail_record_id == 0)
-    $last_parse_fail_record_id = "NONE";
-dbg_echo ("    Line number of last IP log line which failed to parse or validate : $last_parse_fail_record_id\n", TRUE);
-if ($last_insert_fail_record_id == 0)
-    $last_insert_fail_record_id = "NONE";
-dbg_echo ("    Contents of last IP log line which failed to parse or validate : $last_failed_parse_line\n", TRUE);
-dbg_echo ("    ID of last failed SQL insertion : $last_insert_fail_record_id\n", TRUE);
-dbg_echo ("    Error message of last failed SQL insertion : $last_failed_insertion_message\n\n", TRUE);
 
 exit(CLI_ERR_NONE);
 ?>
