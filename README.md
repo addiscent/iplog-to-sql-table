@@ -47,6 +47,18 @@ Files:
     - iplog-database.php, a class required for ipl-to-db.php
     - iplog-example.txt, a short example IP log file used for testing. Not required
 
+Installation:
+
+    After downloading the "iplog-to-sql-table-X.X.X" zip or tar.gz release
+    file, unzip the contents into your "bin" directory, or any directory
+    in your executables PATH.  Ensure that an "iltd-includes" subdirectory
+    was created in your "bin", (PATH), directory. It must contain all of
+    the PHP files listed above, except "ipl-to-db.php".  "ipl-to-db.php"
+    should be one level up, in your "bin" directory.  Execute as with any
+    PHP command line program:
+    
+        php -f ipl-to-db.php fname=logfilename dhname=dbhostname ... etc
+        
 Developer's notes:
 
     For more information about re-using the source code in this product, see

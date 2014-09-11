@@ -60,9 +60,9 @@
         owners.
 */
 
-require "command-line-arguments.php";
-require "iplog-file.php";
-require "iplog-database.php";
+require "./iltd-includes/command-line-arguments.php";
+require "./iltd-includes/iplog-file.php";
+require "./iltd-includes/iplog-database.php";
 
 define("CLI_ERR_NONE", 0);
 define("CLI_ERR_MISSING_REQUIRED_ARGUMENT", 101);
