@@ -1,7 +1,0 @@
-66.249.74.134 - - [15/Jul/2014:05:44:40 -0700] "GET /robots.txt HTTP/1.1" 200 60 "http://referer.example.com/" "+http://www.google.com/bot.html"
-187.120.45.180 - - [15/Jul/2014:08:31:33 -0700] "GET / HTTP/1.1" 403 - "http://referer.example.com/2.php?u=http://example.com" "Mozilla/5.0"
-130.211.176.181 - - [15/Jul/2014:08:36:36 -0700] "GET / HTTP/1.0" 301 - "-" "NerdyBot"
-130.211.176.181 - - [15/Jul/2014:08:36:38 -0700] "GET / HTTP/1.0" 200 51883 "-" "NerdyBot"
-66.249.74.134 - - [15/Jul/2014:05:44:40 -0700] "GET /robots.txt HTTP/1.1" 200 60 "https://youngrawtalent.com/" "+http://www.google.com/bot.html"
-66.249.74.134 - - [15/Jul/2014:05:44:40 -0700] "quit" 200 60 "https://youngrawtalent.com/" "+http://www.google.com/bot.html"
-187.33.2.88 - - [23/Jul/2014:18:07:23 -0700] "\"GET /cgi-bin/php HTTP/1.0 " 403 - "-" "-"
