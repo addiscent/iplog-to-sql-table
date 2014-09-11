@@ -57,7 +57,7 @@ Installation:
     should be one level up, in your "bin" directory.  Execute as with any
     PHP command line program:
     
-        php -f ipl-to-db.php fname=logfilename dhname=dbhostname ... etc
+        php -f (...)/bin/ipl-to-db.php fname=logfilename dhname=dbhostname ... etc
         
 Developer's notes:
 
