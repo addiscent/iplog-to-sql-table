@@ -47,18 +47,34 @@
         - iplog-file.php, a class required for ipl-to-db.php
         - iplog-database.php, a class required for ipl-to-db.php
         - iplog-example.log, a short example IP log file used for testing. Not required
+        - itst-class-diagram.png, docmentation for developers. Not required
+        - LICENSE - A license file describing terms of use
         
-    Installation:
+    Installation Instructions:
     
-        After downloading the "iplog-to-sql-table-X.X.X" zip or tar.gz release
-        file, unzip the contents into your "bin" directory, or any directory
-        in your executables PATH.  Ensure that an "iltd-includes" subdirectory
-        was created in your "bin", (PATH), directory. It must contain all of
-        the PHP files listed above, except "ipl-to-db.php".  "ipl-to-db.php"
-        should be one level up, in your "bin" directory.  Execute as with any
-        PHP command line program:
+        - Download either tar.gz or .zip version of "iplog-to-sql-table-X.X.X",
+        - Un-tar or gunzip "iplog-to-sql-table-X.X.X"
+        - Note the following files and directory structure which results
         
-            php -f (...)ipl-to-db.php fname=logfilename dhname=dbhostname ... etc
+              Directory : "iplog-to-sql-table-X.X.X" - contains:
+              
+                   File      : "ipl-to-db.php"
+                   File      : "README.md"
+                   Directory : "iltd-includes" - contains:
+                   
+                            File : "readme.txt"
+                            File : "command-line-arguments.php"
+                            File : "iplog-file.php"
+                            File : "iplog-database.php"
+                            File : "iplog-example.log"
+                            File : "itst-class-diagram.png"
+                            File : "LICENSE"
+        
+        Test "ipl-to-db.php" by executing:
+        
+            php -f ipl-to-db.php
+            
+        The result should be a usage display similar to shown above.
         
     Developer's notes:
     
