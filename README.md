@@ -1,7 +1,7 @@
 iplog-to-sql-table
 ==================
 
-Reads an IP log, (HTTP access), file and inserts one record of fields for each line into an SQL database table.
+A PHP command line script which reads an IP log file and inserts one record of fields for each line into an SQL database table.
 
 Description:
 
