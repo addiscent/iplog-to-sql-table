@@ -2,7 +2,7 @@
 /*
     File: iplog-database.php
     Product:  iplog-to-sql-table
-    Rev 2014.0905.2200
+    Rev 2014.0911.2200
     by ckthomaston@gmail.com
    
     Description:
@@ -12,9 +12,8 @@
     
     Developer's notes:
     
-        In addition to connecting and disconnecting the database, and ensuring
-        the specified table exists in the database, this class inserts
-        records into the database.
+        In addition to connecting the database and ensuring the specified table
+        exists in the database, this class inserts records into the database.
 
         For more information about re-using the source code in this product, see
         the .php files.
@@ -48,7 +47,7 @@ class IPlogDatabase {
     private $db_user_pwd = NULL;
     private $db_name = NULL;
     private $db_table_name = NULL;
-    
+
     private $db_connection = NULL;
     private $last_failed_insertion_message = NULL;
     
@@ -60,10 +59,6 @@ class IPlogDatabase {
         $this->db_table_name = $db_table_name;
     }
     
-    public function __destruct () {
-            $this->dbg_echo ("Disconnected from MySQL.\n", TRUE);
-    }
-
     public function insert_iplog_record ($ip_log_record = NULL, $full_trace_output = FALSE) 
     {
         if (!$ip_log_record)

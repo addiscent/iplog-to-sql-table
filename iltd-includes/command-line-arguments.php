@@ -2,7 +2,7 @@
 /*
     File: command-line-arguments.php
     Product:  iplog-to-sql-table
-    Rev 2014.0907.1315
+    Rev 2014.0911.2200
     by ckthomaston@gmail.com
    
     Description:
@@ -49,6 +49,7 @@ class CommandLineArguments {
     private $log_file_host_name = NULL;
     
     // optional
+    private $insert_option = FALSE;
     private $max_file_lines = 0; // read to EOF if < 1
     private $parse_fail_break = FALSE;
     private $insert_fail_break = FALSE;
@@ -119,12 +120,20 @@ class CommandLineArguments {
             $this->dbg_echo ("\nRequired arguments not specified\n");
             $this->display_usage ();
         }
-        else { // all required has been specified, display options
+        else {   // all required has been specified, display options
+            // user may want to insert record into SQL database
+            if (array_key_exists ( 'insert', $CLA_GET )) {
+                $this->insert_option = TRUE;
+                $this->dbg_echo ("\nSQL insert-record-option set.  Good records will be inserted into SQL database.\n", TRUE);
+            } else
+                $this->dbg_echo ("\nNOTICE : SQL insert-record-option NOT set.\n"
+                              .  "         No records will be inserted into SQL database.\n", TRUE);
+    
             // user may want max num of IP log file lines to read and insert into table.
             // Typically set to a low value during debug, very high in production
             if (array_key_exists ( 'maxl', $CLA_GET )) {
                 $this->max_file_lines = $CLA_GET['maxl'];
-                $this->dbg_echo ("\nMaximum number of lines specified : " . $this->max_file_lines . "\n", TRUE);
+                $this->dbg_echo ("\nMaximum number of lines specified to read from IP log : " . $this->max_file_lines . "\n", TRUE);
             }
             else {
                 $this->max_file_lines = 1.0e9; // attempt some very large number of lines before EOF
@@ -133,23 +142,20 @@ class CommandLineArguments {
 
             // user may want to break on parse fail
             if (array_key_exists ( 'pbrk', $CLA_GET )) {
-                $this->parse_fail_break = $CLA_GET['pbrk'];
-                if ($this->parse_fail_break == "ON")
-                    $this->dbg_echo ("IP log file parse-fail-break set to break.\n", TRUE);
+                $this->parse_fail_break = TRUE;
+                $this->dbg_echo ("IP log file parse-fail-break set to break.\n", TRUE);
             }
     
             // user may want to break on insertion into SQL table fail
             if (array_key_exists ( 'ibrk', $CLA_GET )) {
-                $this->insert_fail_break = $CLA_GET['ibrk'];
-                if ($this->insert_fail_break == "ON")
-                    $this->dbg_echo ("SQL record insertion-fail-break set to break.\n", TRUE);
+                $this->insert_fail_break = TRUE;
+                $this->dbg_echo ("SQL record insertion-fail-break set to break.\n", TRUE);
             }
     
             // user may want max verbosity
             if (array_key_exists ( 'maxverb', $CLA_GET )) {
-                $this->full_trace_output = $CLA_GET['maxverb'];
-                if ($this->full_trace_output == "ON")
-                    $this->dbg_echo ("Output tracing set to max verbosity.\n", TRUE);
+                $this->full_trace_output = TRUE;
+                $this->dbg_echo ("Output tracing set to max verbosity.\n", TRUE);
             }
         }
     }
@@ -165,13 +171,15 @@ class CommandLineArguments {
             . "        dname=   SQL db name, (required)\n"
             . "        tname=   SQL db table, (required)\n"
             . "        hname=   Host domain name or IP address, (required)\n"
+            . "        insert   No Argument.  Causes insertion of successfully\n"
+            . "                 parsed/validated IP record, (optional)\n"
             . "         maxl=   Integer, maximum number of lines to\n"
             . "                 read from IP log file, (optional)\n"
-            . "       pbrk=ON   Causes  exit if a parse error\n"
+            . "          pbrk   No Argument.  Causes  exit if a parse error\n"
             . "                 is encountered, (optional)\n"
-            . "       ibrk=ON   Causes exit if an insertion error\n"
+            . "          ibrk   No Argument.  Causes exit if an insertion error\n"
             . "                 is encountered, (optional)\n"
-            . "    maxverb=ON   Enables all tracing echo\n";
+            . "       maxverb   No Argument.  Enables all tracing echo\n";
     }
     
     public function is_required_missing () {
@@ -211,6 +219,11 @@ class CommandLineArguments {
     public function get_log_file_host_name () {
         
         return $this->log_file_host_name;
+    }
+    
+    public function get_insert_option () {
+        
+        return $this->insert_option;
     }
     
     public function get_max_file_lines () {

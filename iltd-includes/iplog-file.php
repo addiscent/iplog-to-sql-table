@@ -3,7 +3,7 @@
 /*
     File: iplog-file.php
     Product:  iplog-to-sql-table
-    Rev 2014.0907.1315
+    Rev 2014.0911.2200
     by ckthomaston@gmail.com
    
     Description:

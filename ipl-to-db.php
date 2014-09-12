@@ -2,13 +2,15 @@
 /*
     File: ipl-to-db.php
     Product:  iplog-to-sql-table
-    Rev 2014.0907.1315
+    Rev 2014.0911.2200
     by ckthomaston@gmail.com
    
     Description:
     
         Reads an IP log file, parses fields from each line, and inserts one
-        record of fields for each line into an SQL database table.
+        record of fields for each line into an SQL database table.  If the
+        specified table does not already exist in the SQL database, it will
+        be created.  If a table already exists, the IP log records are appended.
         
         If parsing an IP log file line fails due to malformed fields, or if the 
         field does not pass validation, that record will not be inserted into the
@@ -17,7 +19,7 @@
         
         Usage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername
                 dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname
-                [maxl=number] [pbrk=ON] [ibrk=ON] [maxverb=ON]
+                [insert] [maxl=number] [pbrk] [ibrk] [maxverb]
         
         Where:  fname=   IP log file name, (required)
                dhname=   SQL db server, (host), name, (required)
@@ -26,14 +28,26 @@
                 dname=   SQL db name, (required)
                 tname=   SQL db table, (required)
                 hname=   Host domain name or IP address, (required)
+                insert   No Argument.  Causes insertion of successfully\n"
+                         parsed/validated IP records, (optional)\n"
                  maxl=   Maximum number of lines to
                          read from IP log file, (optional)
-               pbrk=ON   Causes  exit if a parse error
+                  pbrk   No Argument.  Causes  exit if a parse error
                          is encountered, (optional)
-               ibrk=ON   Causes exit if an insertion error
+                  ibrk   No Argument.  Causes exit if an insertion error
                          is encountered, (optional)
-            maxverb=ON   Enables all tracing echo, (optional)
+               maxverb   No Argument.  Enables all tracing echo, (optional)
         
+        
+        IMPORTANT - The use of the "insert" option is REQUIRED if you wish
+        records to be inserted into the SQL database.  By default, the "insert"
+        option is NOT SET.  This gives the behavior of making the program "safe"
+        to use for examination of success/fail rates of IP log parsing and
+        validation errors, without commtting records to the SQL database.  If
+        this fail-safe was not the default behavior, a user could
+        unintentionally append records to the database, therby contaminating it
+        with duplicate records.  Forcing the user to specify the "insert"
+        option prevents unintentional record insertion.
         
         The "maxl" and "maxverb" options typically are not used in production,
         they are provided as a convenience for testing and debugging.
@@ -80,7 +94,7 @@ function dbg_echo ($string, $do_echo = FALSE) {
 // mark time for elapsed time displayed in Summary
 $start_time = time();
 
-echo "ipl-to-db.php v2014.0907.1315\n"
+echo "ipl-to-db.php v2014.0911.2200\n"
     . "Inserts parsed IP log file line fields into an SQL db.\n";
 
 // put command line arguments into the $_GET variable
@@ -108,6 +122,9 @@ $this_host = $CommandLineData->get_log_file_host_name();
 
 // optional command line arguments ---------------------------------------
 
+// user may want to insert records into SQL database
+$insert_record_option = $CommandLineData->get_insert_option();
+    
 // user may want to set max num of lines to read from IP log file.
 // Typically set to a low value during debug, very high in production
 $max_file_lines = $CommandLineData->get_max_file_lines();
@@ -207,56 +224,59 @@ while ($logfile_readln_attempts++ < $max_file_lines) {
     if (!$ip_evnt_flds) {
         $parse_fail_count++;
         dbg_echo ("IP log file line contents : $ip_record_line"
-            . "IP log file line parse failed, skipping this line without inserting into SQL table.\n", TRUE);
+            . "NOTICE : IP log file line parse or validation failed, skipping\n"
+            . "         this line without inserting into SQL table.\n", TRUE);
         if ($parse_fail_break) {
-            dbg_echo ("pbrk==ON: IP log file line parse failed, no more IP log lines will be read.\n", TRUE);
+            dbg_echo ("pbrk : IP log file line parse failed, no more IP log lines will be read.\n", TRUE);
             break;
         }
-    } else { // we have a populated $ip_evnt_flds array, insert it into the db
-        $ip_log_record["IPEventNumber"] = $ip_event_number;
-        $ip_log_record["IPaddress"] = $ip_evnt_flds["IPaddress"];
-        $ip_log_record["DateTime"] = $ip_evnt_flds["DateTime"];
-        $ip_log_record["MethodURI"] = $ip_evnt_flds["MethodURI"];
-        $ip_log_record["Status"] = $ip_evnt_flds["Status"];
-        $ip_log_record["PageSize"] = $ip_evnt_flds["PageSize"];
-        $ip_log_record["Referer"] = $ip_evnt_flds["Referer"];
-        $ip_log_record["Agent"] = $ip_evnt_flds["Agent"];
-        $ip_log_record["ThisHost"] = $this_host;
-        $ip_log_record["InsertionTime"] = date("Y.md.Hi.s");
-
-        $insertion_result = $IPlogDatabase->insert_iplog_record ($ip_log_record, $full_trace_output);
-        
-        if ($insertion_result == IPLDB_ERR_UNABLE_TO_CONNECT_DB) {
-            dbg_echo ("Cannot continue, exiting\n\n", TRUE);
-            exit (CLI_ERR_UNABLE_TO_CONNECT_DB);
-        }
-        
-        if ($insertion_result == IPLDB_ERR_DB_INSERTION_FAIL) {
-            $failed_insertion_message = $IPlogDatabase->get_ipldb_error();
-            dbg_echo ("\nError during record INSERT : " . $failed_insertion_message . "\n", TRUE);
-            dbg_echo (
-                "Dump SQL insertion query\n" .
-                "   IPEventNumber : $ip_log_record[IPEventNumber]\n" .
-                "   IPaddress : $ip_log_record[IPaddress]\n" .
-                "   DateTime : $ip_log_record[DateTime]\n" .
-                "   MethodURI : $ip_log_record[MethodURI]\n" .
-                "   Status : $ip_log_record[Status]\n" .
-                "   PageSize : $ip_log_record[PageSize]\n" .
-                "   Referer : $ip_log_record[Referer]\n" .
-                "   Agent : $ip_log_record[Agent]\n" .
-                "   ThisHost : $ip_log_record[ThisHost]\n" .
-                "   InsertionTime : $ip_log_record[InsertionTime]\n"
-                , TRUE);
-            $insert_fail_count++;
-            dbg_echo ("Insertion failed, record not added. Current insertion fail count: $insert_fail_count\n", $full_trace_output);
-            if ($insert_fail_break) {
-                dbg_echo ("ibrk==ON: SQL insertion failed, no more IP log lines will be read.\n", TRUE);
-                break;
+    } else { // we have a populated $ip_evnt_flds array, insert it into the db if allowed
+        if ($insert_record_option) {  // if insert-record-option set, do insertion
+            $ip_log_record["IPEventNumber"] = $ip_event_number;
+            $ip_log_record["IPaddress"] = $ip_evnt_flds["IPaddress"];
+            $ip_log_record["DateTime"] = $ip_evnt_flds["DateTime"];
+            $ip_log_record["MethodURI"] = $ip_evnt_flds["MethodURI"];
+            $ip_log_record["Status"] = $ip_evnt_flds["Status"];
+            $ip_log_record["PageSize"] = $ip_evnt_flds["PageSize"];
+            $ip_log_record["Referer"] = $ip_evnt_flds["Referer"];
+            $ip_log_record["Agent"] = $ip_evnt_flds["Agent"];
+            $ip_log_record["ThisHost"] = $this_host;
+            $ip_log_record["InsertionTime"] = date("Y.md.Hi.s");
+    
+            $insertion_result = $IPlogDatabase->insert_iplog_record ($ip_log_record, $full_trace_output);
+            
+            if ($insertion_result == IPLDB_ERR_UNABLE_TO_CONNECT_DB) {
+                dbg_echo ("Cannot continue, exiting\n\n", TRUE);
+                exit (CLI_ERR_UNABLE_TO_CONNECT_DB);
             }
-        } 
-        
-        $lines_inserted++;
-        dbg_echo ("This record added to SQL table.\n", $full_trace_output);
+            
+            if ($insertion_result == IPLDB_ERR_DB_INSERTION_FAIL) {
+                $failed_insertion_message = $IPlogDatabase->get_ipldb_error();
+                dbg_echo ("\nError during record INSERT : " . $failed_insertion_message . "\n", TRUE);
+                dbg_echo (
+                    "Dump SQL insertion query\n" .
+                    "   IPEventNumber : $ip_log_record[IPEventNumber]\n" .
+                    "   IPaddress : $ip_log_record[IPaddress]\n" .
+                    "   DateTime : $ip_log_record[DateTime]\n" .
+                    "   MethodURI : $ip_log_record[MethodURI]\n" .
+                    "   Status : $ip_log_record[Status]\n" .
+                    "   PageSize : $ip_log_record[PageSize]\n" .
+                    "   Referer : $ip_log_record[Referer]\n" .
+                    "   Agent : $ip_log_record[Agent]\n" .
+                    "   ThisHost : $ip_log_record[ThisHost]\n" .
+                    "   InsertionTime : $ip_log_record[InsertionTime]\n"
+                    , TRUE);
+                $insert_fail_count++;
+                dbg_echo ("Insertion failed, record not added. Current insertion fail count: $insert_fail_count\n", $full_trace_output);
+                if ($insert_fail_break) {
+                    dbg_echo ("ibrk : SQL insertion failed, no more IP log lines will be read.\n", TRUE);
+                    break;
+                }
+            } 
+            $lines_inserted++;
+            dbg_echo ("This record added to SQL table.\n", $full_trace_output);
+        } else
+            dbg_echo ("insert : insert-record-option not set, skipping insertion.\n", $full_trace_output);
     }
 }
 
