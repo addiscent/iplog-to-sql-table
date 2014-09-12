@@ -43,7 +43,7 @@ Description:
     to use for examination of success/fail rates of IP log parsing and
     validation errors, without commtting records to the SQL database.  If
     this fail-safe was not the default behavior, a user could
-    unintentionally append records to the database, therby contaminating it
+    unintentionally append records to the database, thereby contaminating it
     with duplicate records.  Forcing the user to specify the "insert"
     option prevents unintentional record insertion.
         
