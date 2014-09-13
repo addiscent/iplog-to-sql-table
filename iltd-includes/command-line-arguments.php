@@ -2,7 +2,7 @@
 /*
     File: command-line-arguments.php
     Product:  iplog-to-sql-table
-    Rev 2014.0911.2200
+    Rev 2014.0912.1545
     by ckthomaston@gmail.com
    
     Description:
@@ -124,7 +124,7 @@ class CommandLineArguments {
             // user may want to insert record into SQL database
             if (array_key_exists ( 'insert', $CLA_GET )) {
                 $this->insert_option = TRUE;
-                $this->dbg_echo ("\nSQL insert-record-option set.  Good records will be inserted into SQL database.\n", TRUE);
+                $this->dbg_echo ("\nSQL insert-record-option set.  Validated records will be inserted into SQL database.\n", TRUE);
             } else
                 $this->dbg_echo ("\nNOTICE : SQL insert-record-option NOT set.\n"
                               .  "         No records will be inserted into SQL database.\n", TRUE);
@@ -163,7 +163,7 @@ class CommandLineArguments {
     public function display_usage () {
         echo "\nUsage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername\n"
             . "        dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname\n"
-            . "        [maxl=number] [pbrk=ON] [ibrk=ON]\n"
+            . "        [insert] [maxl=number] [pbrk] [ibrk] [maxverb]\n"
             . "\nWhere:  fname=   IP log file name, (required)\n"
             . "       dhname=   SQL db server, (host), name, (required)\n"
             . "       duname=   SQL db user name, (required)\n"
