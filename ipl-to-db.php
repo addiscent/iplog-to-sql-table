@@ -45,7 +45,7 @@
         to use for examination of success/fail rates of IP log parsing and
         validation errors, without commtting records to the SQL database.  If
         this fail-safe was not the default behavior, a user could
-        unintentionally append records to the database, therby contaminating it
+        unintentionally append records to the database, thereby contaminating it
         with duplicate records.  Forcing the user to specify the "insert"
         option prevents unintentional record insertion.
         
@@ -197,27 +197,27 @@ $insertion_time = NULL;
 $ip_record_line = NULL;
 
 // misc for IP log file working stats
-$logfile_readln_attempts = 0;
+$logfile_lines_read = 0;
 $parse_fail_count = 0;
 
 // misc for SQL table insertion working stats
 $lines_inserted = 0;
 $insert_fail_count = 0;
 
-// process up to $max_file_lines in the IP log file.
-while ($logfile_readln_attempts++ < $max_file_lines) {
+// only process number of lines specified on command line
+for ($i = 0; $i < $max_file_lines; $i++) { 
 
-    $ip_evnt_flds = $IPlogFile->get_iplog_record($logfile_readln_attempts, $ip_record_line, $full_trace_output);
+    $ip_evnt_flds = $IPlogFile->get_iplog_record(($logfile_lines_read +1), $ip_record_line, $full_trace_output);
     
     if ($ip_evnt_flds == IPLF_ERR_UNABLE_TO_OPEN_FILE) {
         dbg_echo ("Cannot continue, exiting\n\n", TRUE);
         exit (CLI_ERR_UNABLE_TO_OPEN_FILE);
     }
 
-    if ($ip_evnt_flds == IPLF_EOF_IPLOG) {
-        $logfile_readln_attempts--; // don't count EOF attempt
+    if ($ip_evnt_flds == IPLF_EOF_IPLOG)
         break;
-    }
+
+    $logfile_lines_read++;
 
     // if parse or validation fails, skip insertion into SQL table.  If no
     // parse break set, continue to read and parse next IP log file record
@@ -288,7 +288,7 @@ dbg_echo ("\nSUMMARY\n", TRUE);
 dbg_echo ("  All specified records processed.\n", TRUE);
 dbg_echo ("  Elapsed time, (hr:min:sec) : $elapsed_time\n\n", TRUE);
 dbg_echo ("  Totals\n", TRUE);
-dbg_echo ("    IP log file lines read : $logfile_readln_attempts\n", TRUE);
+dbg_echo ("    IP log file lines read : $logfile_lines_read\n", TRUE);
 dbg_echo ("    IP log line parse or validation errors : $parse_fail_count\n", TRUE);
 dbg_echo ("    Records inserted into SQL table : $lines_inserted\n", TRUE);
 dbg_echo ("    SQL insertion errors : $insert_fail_count\n\n", TRUE);
