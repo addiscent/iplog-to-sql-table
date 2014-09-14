@@ -34,7 +34,7 @@
 */
 
 define ("CLA_ERR_MISSING_REQUIRED_ARGUMENT", 101);
-define ("CLA_ERR_MAX_LINES_INVALID", 102);
+define ("CLA_ERR_MAX_LINES_INVALID", -1);
 
 class CommandLineArguments {
     
@@ -128,7 +128,7 @@ class CommandLineArguments {
                 $this->insert_option = TRUE;
                 $this->dbg_echo ("\nSQL insert-record-option set\n", TRUE);
             } else
-                $this->dbg_echo ("\nNOTICE : SQL insert-record-option NOT set", TRUE);
+                $this->dbg_echo ("\nNOTICE : SQL insert-record-option NOT set\n", TRUE);
     
             // user may want max num of IP log file lines to read and insert into table.
             // Typically set to a low value during debug, very high in production
@@ -139,6 +139,9 @@ class CommandLineArguments {
                     $this->max_file_lines = CLA_ERR_MAX_LINES_INVALID;
                 } else
                     $this->dbg_echo ("Maximum number of lines specified to read from IP list : " . $this->max_file_lines . "\n", TRUE);
+            } else {
+                $this->max_file_lines = 1.0e9; // attempt some very large number of lines before EOF
+                $this->dbg_echo ("\nMaximum number of lines not specified, reading to EOF\n", TRUE);
             }
 
             // user may want to break on parse fail
