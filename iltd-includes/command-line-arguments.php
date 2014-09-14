@@ -2,8 +2,8 @@
 /*
     File: command-line-arguments.php
     Product:  iplog-to-sql-table
-    Rev 2014.0912.1545
-    by ckthomaston@gmail.com
+    Rev 2014.0913.2200
+    Copyright (C) Charles Thomaston, ckthomaston@gmail.com
    
     Description:
 
@@ -33,11 +33,12 @@
         owners.
 */
 
-define("CLA_ERR_MISSING_REQUIRED_ARGUMENT", 201);
+define ("CLA_ERR_MISSING_REQUIRED_ARGUMENT", 101);
+define ("CLA_ERR_MAX_LINES_INVALID", 102);
 
 class CommandLineArguments {
     
-    private $required_missing = FALSE;
+    private $required_missing = FALSE;  // required command arguments are missing
 
     // required for execution
     private $ip_log_filename = NULL;
@@ -59,6 +60,7 @@ class CommandLineArguments {
     // Parse command line, set values, and annunciate appropriately.
     // Some arguments are required, others optional
     public function CommandLineArguments ($CLA_GET) {
+        
         // get IP log file name from command line
         if (array_key_exists ( 'fname', $CLA_GET )) {
             $this->ip_log_filename = $CLA_GET['fname'];
@@ -124,20 +126,19 @@ class CommandLineArguments {
             // user may want to insert record into SQL database
             if (array_key_exists ( 'insert', $CLA_GET )) {
                 $this->insert_option = TRUE;
-                $this->dbg_echo ("\nSQL insert-record-option set.  Validated records will be inserted into SQL database.\n", TRUE);
+                $this->dbg_echo ("\nSQL insert-record-option set\n", TRUE);
             } else
-                $this->dbg_echo ("\nNOTICE : SQL insert-record-option NOT set.\n"
-                              .  "         No records will be inserted into SQL database.\n", TRUE);
+                $this->dbg_echo ("\nNOTICE : SQL insert-record-option NOT set", TRUE);
     
             // user may want max num of IP log file lines to read and insert into table.
             // Typically set to a low value during debug, very high in production
             if (array_key_exists ( 'maxl', $CLA_GET )) {
                 $this->max_file_lines = $CLA_GET['maxl'];
-                $this->dbg_echo ("\nMaximum number of lines specified to read from IP log : " . $this->max_file_lines . "\n", TRUE);
-            }
-            else {
-                $this->max_file_lines = 1.0e9; // attempt some very large number of lines before EOF
-                $this->dbg_echo ("\nMaximum number of lines not specified, reading to EOF\n", TRUE);
+                if ($this->max_file_lines < 1) {
+                    $this->dbg_echo ("Maximum number of lines specified is invalid : " . $this->max_file_lines . "\n", TRUE);
+                    $this->max_file_lines = CLA_ERR_MAX_LINES_INVALID;
+                } else
+                    $this->dbg_echo ("Maximum number of lines specified to read from IP list : " . $this->max_file_lines . "\n", TRUE);
             }
 
             // user may want to break on parse fail

@@ -2,8 +2,8 @@
 /*
     File: iplog-database.php
     Product:  iplog-to-sql-table
-    Rev 2014.0911.2200
-    by ckthomaston@gmail.com
+    Rev 2014.0913.2200
+    Copyright (C) Charles Thomaston, ckthomaston@gmail.com
    
     Description:
     
@@ -14,6 +14,7 @@
     
         In addition to connecting the database and ensuring the specified table
         exists in the database, this class inserts records into the database.
+        Note that it will not insert a duplicate record.
 
         For more information about re-using the source code in this product, see
         the .php files.
@@ -35,10 +36,12 @@
         owners.
 */
 
-define("IPLDB_ERR_NONE", 100);
-define("IPLDB_ERR_UNABLE_TO_CONNECT_DB", 101);
-define("IPLDB_ERR_DB_INSERTION_FAIL", 102);
-define("IPLDB_ERR_IPL_RECORD_NULL", 103);
+define ("IPLDB_ERR_NONE", 100);
+define ("IPLDB_ERR_UNABLE_TO_CONNECT_DB", 101);
+define ("IPLDB_ERR_DB_INSERTION_FAIL", 102);
+define ("IPLDB_ERR_IPL_RECORD_NULL", 103);
+define ("IPLDB_ERR_DB_PROBE_FAIL", 104);
+define ("IPLDB_ERR_DB_DUPLICATE_IPADDRESS", 105);
 
 class IPlogDatabase {
     
@@ -82,17 +85,17 @@ class IPlogDatabase {
             // Create SQL table
             $create_table_sql = "CREATE TABLE $this->db_table_name
                                     (
-                                    IPEventNumber INT NOT NULL AUTO_INCREMENT,
-                                    PRIMARY KEY(IPEventNumber),
-                                    IPaddress TEXT,
-                                    DateTime TEXT,
-                                    MethodURI TEXT,
-                                    Status INT,
-                                    PageSize INT,
-                                    Referer TEXT,
-                                    Agent TEXT,
-                                    ThisHost TEXT,
-                                    InsertionTime TEXT
+                                        IPid INT NOT NULL AUTO_INCREMENT,
+                                        PRIMARY KEY(IPid),
+                                        IPaddress TEXT,
+                                        DateTime TEXT,
+                                        MethodURI TEXT,
+                                        Status INT,
+                                        PageSize INT,
+                                        Referer TEXT,
+                                        Agent TEXT,
+                                        ThisHost TEXT,
+                                        InsertionTime TEXT
                                     )";
                     
             $result = $this->db_connection->query ($create_table_sql);
@@ -102,9 +105,35 @@ class IPlogDatabase {
                 echo $this->db_connection->error . "\n";
         }
         
+        // ensure we do not append a duplicate ip log record
+        $probe_sql = "SELECT * FROM $this->db_table_name WHERE
+                            IPaddress = '$ip_log_record[IPaddress]' and
+                            DateTime = '$ip_log_record[DateTime]' and
+                            MethodURI = '$ip_log_record[MethodURI]' and
+                            Status = $ip_log_record[Status] and
+                            PageSize = $ip_log_record[PageSize] and
+                            Referer = '$ip_log_record[Referer]' and
+                            Agent = '$ip_log_record[Agent]' and
+                            ThisHost = '$ip_log_record[ThisHost]'
+                    ";
+        
+        $result = $this->db_connection->query ($probe_sql);
+        if (!$result) {
+            $this->last_failed_insertion_message = $this->db_connection->error;
+            return IPLDB_ERR_DB_PROBE_FAIL;
+        }
+
+
+        $row = mysqli_fetch_array($result);
+        if ($row) {
+            dbg_echo ("Record probe successful, duplicate record detected\n", $full_trace_output);
+            return IPLDB_ERR_DB_DUPLICATE_IPADDRESS;
+        }
+        dbg_echo ("No duplicate record detected\n", $full_trace_output);
+
         $insert_sql = "INSERT INTO $this->db_table_name
                             (
-                                IPEventNumber,
+                                IPid,
                                 IPaddress,
                                 DateTime,
                                 MethodURI,
@@ -117,19 +146,20 @@ class IPlogDatabase {
                             )
                         VALUES
                             (
-                                $ip_log_record[IPEventNumber],
-                                \"$ip_log_record[IPaddress]\",
-                                \"$ip_log_record[DateTime]\",
-                                \"$ip_log_record[MethodURI]\",
+                                $ip_log_record[IPid],
+                                '$ip_log_record[IPaddress]',
+                                '$ip_log_record[DateTime]',
+                                '$ip_log_record[MethodURI]',
                                 $ip_log_record[Status],
                                 $ip_log_record[PageSize],
-                                \"$ip_log_record[Referer]\",
-                                \"$ip_log_record[Agent]\",
-                                \"$ip_log_record[ThisHost]\",
-                                \"$ip_log_record[InsertionTime]\"
+                                '$ip_log_record[Referer]',
+                                '$ip_log_record[Agent]',
+                                '$ip_log_record[ThisHost]',
+                                '$ip_log_record[InsertionTime]'
                             )";
         
             $result = $this->db_connection->query ($insert_sql);
+            
             if (!$result) {
                 $this->last_failed_insertion_message = $this->db_connection->error;
                 dbg_echo ("Record insertion failed\n", TRUE);

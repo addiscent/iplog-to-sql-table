@@ -6,19 +6,21 @@ Reads an IP log, (HTTP access), file and inserts one record of fields for each l
 Description:
 
     Reads an IP log file, parses fields from each line, and inserts one
-    record of fields for each line into an SQL database table.  If the
-    specified table does not already exist in the SQL database, it will
-    be created.  If a table already exists, the IP log records are appended.
-
+    record of fields for each line into an SQL database table.
+    
     If parsing an IP log file line fails due to malformed fields, or if the 
     field does not pass validation, that record will not be inserted into the
     table.  However, further attempts will be made to fetch, parse, and insert
     subsequent lines and records, until EOF.
-
+    
+    If the specified table does not already exist in the SQL database, it
+    will be created.  If a table already exists, records in the table for
+    which IP log file entries already exist will not be inserted.
+    
     Usage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername
             dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname
             [insert] [maxl=number] [pbrk] [ibrk] [maxverb]
-            
+    
     Where:  fname=   IP log file name, (required)
            dhname=   SQL db server, (host), name, (required)
            duname=   SQL db user name, (required)
@@ -30,23 +32,19 @@ Description:
                      parsed/validated IP records, (optional)\n"
              maxl=   Maximum number of lines to
                      read from IP log file, (optional)
-              pbrk   No argument.  Causes exit if a parse or validation error
+              pbrk   No Argument.  Causes  exit if a parse error
                      is encountered, (optional)
-              ibrk   No argument.  Causes exit if an insertion error
+              ibrk   No Argument.  Causes exit if an insertion error
                      is encountered, (optional)
-           maxverb   No argument.  Enables all tracing echo, (optional)
-
-
+           maxverb   No Argument.  Enables all tracing echo, (optional)
+    
+    
     IMPORTANT - The use of the "insert" option is REQUIRED if you wish
     records to be inserted into the SQL database.  By default, the "insert"
     option is NOT SET.  This gives the behavior of making the program "safe"
     to use for examination of success/fail rates of IP log parsing and
-    validation errors, without commtting records to the SQL database.  If
-    this fail-safe was not the default behavior, a user could
-    unintentionally append records to the database, thereby contaminating it
-    with duplicate records.  Forcing the user to specify the "insert"
-    option prevents unintentional record insertion.
-        
+    validation errors, without commtting records to the SQL database.
+    
     The "maxl" and "maxverb" options typically are not used in production,
     they are provided as a convenience for testing and debugging.
 
@@ -55,14 +53,15 @@ Files:
     A complete set of files for this distribution contains all of the following:
     
     - readme.txt
-    - ipl-to-db.php, command line script which parses the log and inserts into table
-    - command-line-arguments.php, a class required for ipl-to-db.php
-    - iplog-file.php, a class required for ipl-to-db.php
-    - iplog-database.php, a class required for ipl-to-db.php
-    - iplog-example.log, a short example IP log file used for testing. Not required
-    - itst-class-diagram.png, docmentation for developers. Not required
+    - ipl-to-db.php - command line script which parses the log and inserts into table
+    - command-line-arguments.php - a class required for ipl-to-db.php
+    - iplog-file.php - a class required for ipl-to-db.php
+    - iplog-database.php - a class required for ipl-to-db.php
+    - iplog-example.log - a short example IP log file used for testing
+    - itst-class-diagram.png - docmentation for developers
+    - README.md - project description on GitHub.com
     - LICENSE - A license file describing terms of use
-
+    
 Installation Instructions:
 
     - Download either tar.gz or .zip version of "iplog-to-sql-table-X.X.X",
@@ -89,12 +88,16 @@ Installation Instructions:
         
     The result should be a usage display similar to shown above in
     "Description" section.
-        
+    
+Operation Details :
+
+    For more information about operation, see the readme.txt file.
+
 Developer's notes:
 
     For more information about re-using the source code in this product, see
     the .php files.
-
+    
 License:
 
     The license under which this software product is released is GPLv2.  
@@ -110,3 +113,6 @@ Disclaimer:
     Use at your own risk, author is not liable for damages, product is not
     warranted to be useful for anything, copyrights held by their respective
     owners.
+
+
+Copyright (C) Charles Thomaston, ckthomaston@gmail.com

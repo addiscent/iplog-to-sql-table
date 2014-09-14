@@ -1,10 +1,9 @@
 <?php
-
 /*
     File: iplog-file.php
     Product:  iplog-to-sql-table
-    Rev 2014.0911.2200
-    by ckthomaston@gmail.com
+    Rev 2014.0913.2200
+    Copyright (C) Charles Thomaston, ckthomaston@gmail.com
    
     Description:
     
@@ -14,7 +13,7 @@
     
         In addition to opening and closing the IP log file, this class reads
         IP log file entries, parses fields from them, and creates a record
-        containg those fields, ($ip_evnt_flds), which is returned to the caller.
+        containing those fields, ($ip_evnt_flds), which is returned to the caller.
      
         Seven fields are parsed from each line in the IP log file:
     
@@ -90,12 +89,12 @@
         owners.
 */
 
-define("IPLF_ERR_UNABLE_TO_OPEN_FILE", 101);
-define("IPLF_EOF_IPLOG", 102);
-define("IPLF_ERR_RECORD_LINE_NULL", 103);
+define ("IPLF_ERR_UNABLE_TO_OPEN_FILE", 101);
+define ("IPLF_EOF_IPLOG", 102);
+define ("IPLF_ERR_RECORD_LINE_NULL", 103);
 
-// if a parsed int field is "-", change it to -1
-define("PAGESIZE_ADJUST_VALUE", -1);
+// if a parsed PageSize int field is "-", change it to -1
+define ("PAGESIZE_ADJUST_VALUE", -1);
 
 
 class IPlogFile
@@ -155,6 +154,7 @@ private $http_methods = array
     }
     
     public function __destruct () {
+        
         if ($this->ip_log_filehandle) {
             // close log file
             fclose ($this->ip_log_filehandle);
@@ -166,8 +166,10 @@ private $http_methods = array
         
         // open the IP log file if this is the first get_iplog_record()
         if ($this->ip_log_filename && !$this->ip_log_filehandle) {
+            
             // open IP address log file
             $this->ip_log_filehandle = fopen ($this->ip_log_filename, "r");
+            
             if (!$this->ip_log_filehandle) {
                 $this->dbg_echo ("\nUnable to open IP log file : $this->ip_log_filename\n", TRUE);
                 return IPLF_ERR_UNABLE_TO_OPEN_FILE;
@@ -177,6 +179,7 @@ private $http_methods = array
         
         // read a line of file. Display trace info
         $ip_record_line = fgets($this->ip_log_filehandle);
+        
         if (!$ip_record_line) {
             dbg_echo ( "\nIP log file returned EOF, done parsing records.\n", TRUE);
             return IPLF_EOF_IPLOG; // no record to return
