@@ -2,13 +2,13 @@
 /*
     File: ipl-to-db.php
     Product:  iplog-to-sql-table
-    Rev 2014.0913.2200
-    Copyright (C) Charles Thomaston, ckthomaston@gmail.com
+    Rev 2014.0916.2030
+    Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
    
     Description:
     
-        Reads an IP log file, parses fields from each line, and inserts one
-        record of fields for each line into an SQL database table.
+        Reads an IP log file and inserts into an SQL database table one record
+        of fields for each line.
         
         If parsing an IP log file line fails due to malformed fields, or if the 
         field does not pass validation, that record will not be inserted into the
@@ -21,24 +21,66 @@
         
         Usage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername
                 dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname
-                [insert] [maxl=number] [pbrk] [ibrk] [maxverb]
+                [insert] [maxl=number] [pbrk] [ibrk] [vmode=enum]  [ioi]
         
         Where:  fname=   IP log file name, (required)
+        
                dhname=   SQL db server, (host), name, (required)
+               
                duname=   SQL db user name, (required)
+               
                 dupwd=   SQL db user password, (required)
+                
                 dname=   SQL db name, (required)
+                
                 tname=   SQL db table, (required)
+                
                 hname=   Host domain name or IP address, (required)
-                insert   No Argument.  Causes insertion of successfully\n"
-                         parsed/validated IP records, (optional)\n"
-                 maxl=   Maximum number of lines to
-                         read from IP log file, (optional)
-                  pbrk   No Argument.  Causes  exit if a parse error
-                         is encountered, (optional)
-                  ibrk   No Argument.  Causes exit if an insertion error
-                         is encountered, (optional)
-               maxverb   No Argument.  Enables all tracing echo, (optional)
+                
+                insert   No argument. Causes insertion into db of successfully
+                         parsed/validated IP records
+                         
+                 maxl=   Optional. Maximum number of lines to read from IP log
+                         file. Typically only used during debugging/testing.
+                         If not specified, the program default is to read to
+                         input IP log file EOF
+                         
+                  pbrk   Optional. No argument. Causes exit if a parse error
+                         is encountered. Typically only used during
+                         debugging/testing
+                         
+                  ibrk   Optional. No argument. Causes exit if an insertion
+                         error is encountered, (optional)
+                         
+            vmode=enum   Sets verbosity mode, specified by enum.  'vmode' is a
+                         level of tracing verbosity ranging from 'all', (max
+                         STDOUT messages enabled), to 'silent', (all STDOUT
+                         messages disabled).  Between the two, 'gen', (General),
+                         has more STDOUT messages than 'log', (logging mode).
+                         
+                            all - Maximum verbosity. Very detailed tracing.
+                                  Typically only used for debugging/testing.
+                                  Used most often in combination with the maxl
+                                  option
+                                  
+                            gen - General. Displays information typically
+                                  desired when executed by command line user,
+                                  such as settings of required command line
+                                  arguments and options, error messages
+                                  indicating processing results, and a complete
+                                  summary  
+                                  
+                            log - Logging. Limits verbosity to most important
+                                  statistics needed for logging  
+                                  
+                         silent - Program will emit no output to STDOUT
+                         
+                  ioi    Optional. No argument. Forces display of an "Item of
+                         Interest". This is a data or event item which will be
+                         displayed regardless of the 'vmode' setting, (except
+                         for 'silent', nothing is displayed during 'silent'
+                         vmode). At this time, there is only one IOI, which is
+                         the "MethodURI field malformed" error annunciation.
         
         
         IMPORTANT - The use of the "insert" option is REQUIRED if you wish
@@ -47,9 +89,6 @@
         to use for examination of success/fail rates of IP log parsing and
         validation errors, without commtting records to the SQL database.
         
-        The "maxl" and "maxverb" options typically are not used in production,
-        they are provided as a convenience for testing and debugging.
-
     Files:
     
         A complete set of files for this distribution contains all of the following:
@@ -144,75 +183,145 @@ require "./iltd-includes/command-line-arguments.php";
 require "./iltd-includes/iplog-file.php";
 require "./iltd-includes/iplog-database.php";
 
-define ("CLI_ERR_NONE", 0);
-define ("CLI_ERR_MISSING_REQUIRED_ARGUMENT", 101);
-define ("CLI_ERR_UNABLE_TO_OPEN_FILE", 102);
-define ("CLI_ERR_UNABLE_TO_CONNECT_DB", 103);
+/*
+    These definitions are part of the CommandLineArguments Class Interface
+    
+    define ( "CLA_VERBOSITY_MODE_GENERAL", ... );
+    define ( "CLA_VERBOSITY_MODE_LOG", ... );
+    define ( "CLA_VERBOSITY_MODE_ALL", ... );
+    define ( "CLA_VERBOSITY_MODE_SILENT", ... );
+*/
 
+define ( "CLI_ERR_NONE", 0 );
+define ( "CLI_ERR_MISSING_REQUIRED_ARGUMENT", 101 );
+define ( "CLI_ERR_UNABLE_TO_OPEN_FILE", 102 );
+define ( "CLI_ERR_UNABLE_TO_CONNECT_DB", 103 );
+define ( "CLI_ERR_UNABLE_TO_CONTINUE", 104 );
 
-function dbg_echo ($string, $do_echo = FALSE) {
-    if ($do_echo)
+$return_msg = array // message strings returned by CommandLineArguments class
+                (
+                "fname" => "",
+                "dhname" => "",
+                "duname" => "",
+                "dupwd" => "",
+                "dname" => "",
+                "tname" => "",
+                "hname" => "",
+                "insert" => "",
+                "maxl" => "",
+                "pbrk" => "",
+                "ibrk" => "",
+                "vmode" => "",
+                "ioi" => ""
+                );
+               
+function verbosity_echo ( $string, $verb_mode ) {
+    
+    global $verbosity_mode;
+    
+    if ( $verbosity_mode >= $verb_mode )
         echo $string;
 }
-
-// main() ===========================================
-
+    
 // mark time for elapsed time displayed in Summary
-$start_time = time();
-
-echo "ipl-to-db.php v2014.0913.2200\n"
-    . "Inserts parsed IP log file line fields into an SQL db.\n";
+$start_time = time ();
 
 // put command line arguments into the $_GET variable
-parse_str (implode('&', array_slice($argv, 1)), $_GET);
+parse_str ( implode ( '&', array_slice ( $argv, 1 ) ), $_GET );
 
-$CommandLineData = new CommandLineArguments ($_GET);
+$CommandLineData = new CommandLineArguments (); // process command line
 
-if ($CommandLineData->is_required_missing())
-    exit (CLI_ERR_MISSING_REQUIRED_ARGUMENT);
+$verbosity_mode = $CommandLineData->get_verbosity_mode ( $return_msg [ 'vmode' ] ); // out string not used here
+
+$msg = "ipl-to-db.php v2014.0916.2030\n";
+
+verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
+                
+$msg = "Inserts parsed IP log file line fields into an SQL db.\n";
+
+verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
+$msg = "copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com\n";
+
+verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
+if ( $CommandLineData->is_required_missing ( $out_msg ) ) {
+    
+    verbosity_echo ( "\n", CLA_VERBOSITY_MODE_LOG );
+    verbosity_echo ( $out_msg, CLA_VERBOSITY_MODE_LOG );
+            
+    $CommandLineData->display_usage ();
+
+    exit ( CLI_ERR_MISSING_REQUIRED_ARGUMENT );
+}
 
 // required command line arguments -----------------------------
 
 // get IP log file name from command line
-$ip_log_filename = $CommandLineData->get_iplogfile_name();
+$ip_log_filename = $CommandLineData->get_iplogfile_name ( $return_msg [ 'fname' ] );
 
-// SQL db-specific data
-$db_host = $CommandLineData->get_db_host_name(); 
-$db_user = $CommandLineData->get_db_user_name();
-$db_user_pwd = $CommandLineData->get_db_user_password();
-$db_name = $CommandLineData->get_db_name();
-$db_table_name = $CommandLineData->get_db_table_name();
+verbosity_echo ( "\n" . $return_msg [ 'fname' ], CLA_VERBOSITY_MODE_GENERAL );
 
-// name of the host for which the IP log file was generated
-$this_host = $CommandLineData->get_log_file_host_name();
+// SQL db-specific command line arguments
+$db_host = $CommandLineData->get_db_host_name ( $return_msg [ 'dhname' ] ); 
+
+verbosity_echo ( $return_msg [ 'dhname' ], CLA_VERBOSITY_MODE_GENERAL );
+
+$db_user = $CommandLineData->get_db_user_name ( $return_msg [ 'duname' ] );
+
+verbosity_echo ( $return_msg [ 'duname' ], CLA_VERBOSITY_MODE_GENERAL );
+
+$db_user_pwd = $CommandLineData->get_db_user_password ( $return_msg [ 'dupwd' ] );
+
+verbosity_echo ( $return_msg [ 'dupwd' ], CLA_VERBOSITY_MODE_GENERAL );
+
+$db_name = $CommandLineData->get_db_name ( $return_msg [ 'dname' ] );
+
+verbosity_echo ( $return_msg [ 'dname' ], CLA_VERBOSITY_MODE_GENERAL );
+
+$db_table_name = $CommandLineData->get_db_table_name ( $return_msg [ 'tname' ] );
+
+verbosity_echo ( $return_msg [ 'tname' ], CLA_VERBOSITY_MODE_GENERAL );
+
+$this_host = $CommandLineData->get_log_file_host_name ( $return_msg [ 'hname' ] );
+
+verbosity_echo ( $return_msg [ 'hname' ], CLA_VERBOSITY_MODE_GENERAL );
 
 // optional command line arguments -------------------------------
 
 // user may want to insert records into SQL database
-$insert_record_option = $CommandLineData->get_insert_option();
+$insert_record_option = $CommandLineData->get_insert_option ( $return_msg [ 'insert' ] );
+
+verbosity_echo ( $return_msg [ 'insert' ], CLA_VERBOSITY_MODE_GENERAL );
     
 // user may want to set max num of lines to read from IP log file.
 // Typically set to a low value during debug, very high in production
-$max_file_lines = $CommandLineData->get_max_file_lines();
-if ($max_file_lines == CLA_ERR_MAX_LINES_INVALID) {
-    dbg_echo ("maxl is invalid, can't continue...\n", TRUE);
-    exit (CLI_ERR_UNABLE_TO_CONTINUE);
-}
+$max_file_lines = $CommandLineData->get_max_file_lines ( $return_msg [ 'maxl' ] );
+
+verbosity_echo ( $return_msg [ 'maxl' ], CLA_VERBOSITY_MODE_GENERAL );
 
 // user may want to break on parse or validation fail
-$parse_fail_break = $CommandLineData->get_parse_fail_break();
+$parse_fail_break = $CommandLineData->get_parse_fail_break ( $return_msg [ 'pbrk' ] );
+
+verbosity_echo ( $return_msg [ 'pbrk' ], CLA_VERBOSITY_MODE_GENERAL );
     
 // user may want to break on insertion into SQL table fail
-$insert_fail_break = $CommandLineData->get_insert_fail_break();
+$insert_fail_break = $CommandLineData->get_insert_fail_break ( $return_msg [ 'ibrk' ] );
 
-// user may want max verbosity, only useful for short test IP log files
-$full_trace_output = $CommandLineData->get_full_trace_output();
+verbosity_echo ( $return_msg [ 'ibrk' ], CLA_VERBOSITY_MODE_GENERAL );
 
-$IPlogFile = new IPlogFile ($ip_log_filename);
+verbosity_echo ( $return_msg [ 'vmode' ], CLA_VERBOSITY_MODE_GENERAL );
 
-$IPlogDatabase = new IPlogDatabase ($db_host, $db_user, $db_user_pwd, $db_name, $db_table_name);
+// user may want to break on insertion into SQL table fail
+$item_of_interest = $CommandLineData->get_items_of_interest ( $return_msg [ 'ioi' ] );
 
-dbg_echo ("Processing records...\n", TRUE);
+verbosity_echo ( $return_msg [ 'ioi' ], CLA_VERBOSITY_MODE_GENERAL );
+
+verbosity_echo ( "\n", CLA_VERBOSITY_MODE_GENERAL );
+
+$IPlogFile = new IPlogFile ( $ip_log_filename, $verbosity_mode );
+
+$IPlogDatabase = new IPlogDatabase ( $db_host, $db_user, $db_user_pwd, $db_name, $db_table_name, $verbosity_mode );
 
 $ip_log_record = array
                     (
@@ -250,16 +359,14 @@ $loop_break = FALSE;
 $duplicate_address_count = 0;
 
 // only process number of lines specified on command line
-for ($i = 0; ($i < $max_file_lines) && (!$loop_break); $i++) { 
+for ( $i = 0; ( $i < $max_file_lines ) && ( !$loop_break ); $i++ ) { 
 
-    $ip_evnt_flds = $IPlogFile->get_iplog_record(($logfile_lines_read + 1), $ip_record_line, $full_trace_output);
+    $ip_evnt_flds = $IPlogFile->get_iplog_record(($logfile_lines_read + 1), $ip_record_line, $item_of_interest, $out_msg);
     
-    if ($ip_evnt_flds == IPLF_ERR_UNABLE_TO_OPEN_FILE) {
-        dbg_echo ("Cannot continue, exiting\n\n", TRUE);
-        exit (CLI_ERR_UNABLE_TO_OPEN_FILE);
-    }
+    if ( $ip_evnt_flds == IPLF_ERR_UNABLE_TO_OPEN_FILE )
+        exit ( CLI_ERR_UNABLE_TO_OPEN_FILE );
 
-    if ($ip_evnt_flds == IPLF_EOF_IPLOG)
+    if  ($ip_evnt_flds == IPLF_EOF_IPLOG )
         break;
 
     $logfile_lines_read++;
@@ -269,103 +376,148 @@ for ($i = 0; ($i < $max_file_lines) && (!$loop_break); $i++) {
     
         if ($insert_record_option) {  // if insert-record-option set, do insertion
         
-            $ip_log_record["IPid"] = $ip_event_number;
-            $ip_log_record["IPaddress"] = $ip_evnt_flds["IPaddress"];
-            $ip_log_record["DateTime"] = $ip_evnt_flds["DateTime"];
-            $ip_log_record["MethodURI"] = $ip_evnt_flds["MethodURI"];
-            $ip_log_record["Status"] = $ip_evnt_flds["Status"];
-            $ip_log_record["PageSize"] = $ip_evnt_flds["PageSize"];
-            $ip_log_record["Referer"] = $ip_evnt_flds["Referer"];
-            $ip_log_record["Agent"] = $ip_evnt_flds["Agent"];
-            $ip_log_record["ThisHost"] = $this_host;
-            $ip_log_record["InsertionTime"] = date("Y.md.Hi.s");
+            $ip_log_record [ "IPid" ] = $ip_event_number;
+            $ip_log_record [ "IPaddress" ] = $ip_evnt_flds [ "IPaddress" ];
+            $ip_log_record [ "DateTime" ] = $ip_evnt_flds [ "DateTime" ];
+            $ip_log_record [ "MethodURI" ] = $ip_evnt_flds [ "MethodURI" ];
+            $ip_log_record [ "Status" ] = $ip_evnt_flds [ "Status" ];
+            $ip_log_record [ "PageSize" ] = $ip_evnt_flds [ "PageSize" ];
+            $ip_log_record [ "Referer" ] = $ip_evnt_flds [ "Referer" ];
+            $ip_log_record [ "Agent" ] = $ip_evnt_flds [ "Agent" ];
+            $ip_log_record [ "ThisHost" ] = $this_host;
+            $ip_log_record [ "InsertionTime" ] = date ( "Y.md.Hi.s" );
     
-            $insertion_result = $IPlogDatabase->insert_iplog_record ($ip_log_record, $full_trace_output);
+            $insertion_result = $IPlogDatabase->insert_iplog_record ( $ip_log_record );
             
             switch ($insertion_result) {
                 
                 case IPLDB_ERR_UNABLE_TO_CONNECT_DB:
 
-                    dbg_echo ("Cannot continue, exiting\n\n", TRUE);
+                    $msg = "Cannot continue, exiting\n\n";
+                    
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
                     exit (CLI_ERR_UNABLE_TO_CONNECT_DB);
 
                 case IPLDB_ERR_DB_INSERTION_FAIL:
                 
                     $failed_insertion_message = $IPlogDatabase->get_ipldb_error();
                     
-                    dbg_echo ("\nError during record INSERT : " . $failed_insertion_message . "\n", TRUE);
-                    dbg_echo (
-                        "Dump SQL insertion query\n" .
-                        "   IPEventNumber : $ip_log_record[IPEventNumber]\n" .
-                        "   IPaddress : $ip_log_record[IPaddress]\n" .
-                        "   DateTime : $ip_log_record[DateTime]\n" .
-                        "   MethodURI : $ip_log_record[MethodURI]\n" .
-                        "   Status : $ip_log_record[Status]\n" .
-                        "   PageSize : $ip_log_record[PageSize]\n" .
-                        "   Referer : $ip_log_record[Referer]\n" .
-                        "   Agent : $ip_log_record[Agent]\n" .
-                        "   ThisHost : $ip_log_record[ThisHost]\n" .
-                        "   InsertionTime : $ip_log_record[InsertionTime]\n"
-                        , TRUE);
-                        
-                    $insert_fail_count++;
-                    dbg_echo ("Insertion failed, record not added. Current insertion fail count: $insert_fail_count\n", $full_trace_output);
+                    $msg = "Error during record INSERT : " . $failed_insertion_message . "\n";
                     
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
+                    $msg = 
+                        "Dump SQL insertion query\n" .
+                        "   IPEventNumber : $ip_log_record [ IPEventNumber ]\n" .
+                        "   IPaddress : $ip_log_record [ IPaddress ]\n" .
+                        "   DateTime : $ip_log_record [ DateTime ]\n" .
+                        "   MethodURI : $ip_log_record [ MethodURI ]\n" .
+                        "   Status : $ip_log_record [ Status ]\n" .
+                        "   PageSize : $ip_log_record [ PageSize ]\n" .
+                        "   Referer : $ip_log_record [ Referer ]\n" .
+                        "   Agent : $ip_log_record [ Agent ]\n" .
+                        "   ThisHost : $ip_log_record [ ThisHost ]\n" .
+                        "   InsertionTime : $ip_log_record [ InsertionTime ]\n";
+
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
+                    $insert_fail_count++;
+
+                    $msg = "Insertion failed, record not added. Current insertion fail count: $insert_fail_count\n";
+                    
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
                     if ($insert_fail_break) {
-                        dbg_echo ("ibrk : SQL insertion failed, no more IP log lines will be read.\n", TRUE);
+                        
+                        $msg = "ibrk : SQL insertion failed, no more IP log lines will be read.\n";
+                        
+                        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
                         $loop_break = TRUE;
                     }
+                    
                     break;
                     
                 case IPLDB_ERR_DB_PROBE_FAIL:
                 
-                    dbg_echo ("SQL record probe failed\n", $full_trace_output);
+                    $msg = "SQL record probe failed\n";
+                    
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
                     $failed_insertion_message = $IPlogDatabase->get_ipldb_error();
-                    dbg_echo ("SQL error msg : $failed_insertion_message\n", $full_trace_output);
+                    
+                    $msg = "SQL error msg : $failed_insertion_message\n";
+                    
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                    
                     break;
                     
                 case IPLDB_ERR_DB_DUPLICATE_IPADDRESS:
                     
-                    dbg_echo ("This IP address log record is a duplicate, skipping insertion\n", $full_trace_output);
+                    $msg = "IP address log record line $logfile_lines_read is a duplicate, skipping insertion\n";
+                    
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                    
                     $duplicate_address_count++;
+                    
                     break;
     
                 default:
                     
-                    dbg_echo ("This record added to SQL table.\n", $full_trace_output);
+                    $msg = "This record added to SQL table.\n";
+                    
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                    
                     $lines_inserted++;
             } 
             
-        } else
-            dbg_echo ("insert : insert-record-option not set, skipping insertion.\n", $full_trace_output);
+        } else {
+
+            $msg = "insert : insert-record-option not set, skipping insertion.\n";
+            
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                    
+        }
             
     } else { // $ip_evnt_flds == NULL
     
         $parse_fail_count++;
-        dbg_echo ("IP log file line contents : $ip_record_line"
-            . "NOTICE : IP log file line parse or validation failed, skipping\n"
-            . "         this line without inserting into SQL table.\n", TRUE);
+        
+        $msg = "IP log file line $logfile_lines_read contents : $ip_record_line"
+                . "NOTICE : IP log file line $logfile_lines_read parse or validation failed, skipping this line without inserting into SQL table.\n";
             
+        if ( $item_of_interest )
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
+        else
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                        
         if ($parse_fail_break) {
-            dbg_echo ("pbrk : IP log file line parse failed, no more IP log lines will be read.\n", TRUE);
+
+            $msg = "pbrk : IP log file line parse failed, no more IP log lines will be read.\n";
+            
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+            
             break;
         }
     }
 }
 
 $end_time = time ();
+
 $elapsed_time = $end_time - $start_time;
-$elapsed_time = date ("H:i:s",$elapsed_time);
 
-dbg_echo ("\nSUMMARY\n", TRUE);
-dbg_echo ("  All specified records processed.\n", TRUE);
-dbg_echo ("  Elapsed time, (hr:min:sec) : $elapsed_time\n\n", TRUE);
-dbg_echo ("  Totals\n", TRUE);
-dbg_echo ("    IP log file lines read : $logfile_lines_read\n", TRUE);
-dbg_echo ("    IP log line parse or validation errors : $parse_fail_count\n", TRUE);
-dbg_echo ("    Records inserted into SQL table : $lines_inserted\n", TRUE);
-dbg_echo ("    Duplicate record insertions skipped : $duplicate_address_count\n", TRUE);
-dbg_echo ("    SQL insertion errors : $insert_fail_count\n\n", TRUE);
+$elapsed_time = date ( "H:i:s",$elapsed_time );
 
+$msg = "Elapsed time (hr:min:sec) : $elapsed_time\n"
+        . "Records inserted into SQL table : $lines_inserted\n"
+        . "Duplicate record insertions skipped : $duplicate_address_count\n"
+        . "IP log file lines read : $logfile_lines_read\n"
+        . "IP log line parse or validation errors : $parse_fail_count\n"
+        . "SQL insertion errors : $insert_fail_count\n";
+
+verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
+            
 exit (CLI_ERR_NONE);
+
 ?>

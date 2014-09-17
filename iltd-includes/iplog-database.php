@@ -2,8 +2,8 @@
 /*
     File: iplog-database.php
     Product:  iplog-to-sql-table
-    Rev 2014.0913.2200
-    Copyright (C) Charles Thomaston, ckthomaston@gmail.com
+    Rev 2014.0916.2030
+    Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
    
     Description:
     
@@ -36,12 +36,21 @@
         owners.
 */
 
-define ("IPLDB_ERR_NONE", 100);
-define ("IPLDB_ERR_UNABLE_TO_CONNECT_DB", 101);
-define ("IPLDB_ERR_DB_INSERTION_FAIL", 102);
-define ("IPLDB_ERR_IPL_RECORD_NULL", 103);
-define ("IPLDB_ERR_DB_PROBE_FAIL", 104);
-define ("IPLDB_ERR_DB_DUPLICATE_IPADDRESS", 105);
+/*
+    These definitions are part of the CommandLineArguments Class Interface
+    
+    define ( "CLA_VERBOSITY_MODE_ALL", ... );
+    define ( "CLA_VERBOSITY_MODE_GENERAL", ... );
+    define ( "CLA_VERBOSITY_MODE_LOG", ... );
+    define ( "CLA_VERBOSITY_MODE_SILENT", ... );
+*/
+
+define ( "IPLDB_ERR_NONE", 100 );
+define ( "IPLDB_ERR_UNABLE_TO_CONNECT_DB", 101 );
+define ( "IPLDB_ERR_DB_INSERTION_FAIL", 102 );
+define ( "IPLDB_ERR_IPL_RECORD_NULL", 103 );
+define ( "IPLDB_ERR_DB_PROBE_FAIL", 104 );
+define ( "IPLDB_ERR_DB_DUPLICATE_IPADDRESS", 105 );
 
 class IPlogDatabase {
     
@@ -52,22 +61,41 @@ class IPlogDatabase {
     private $db_table_name = NULL;
 
     private $db_connection = NULL;
+
     private $last_failed_insertion_message = NULL;
     
-    public function IPlogDatabase ($db_host = NULL, $db_user = NULL, $db_user_pwd = NULL, $db_name = NULL, $db_table_name = NULL) {
+    private $ipdb_verbosity_mode = 0;
+
+    public function IPlogDatabase (
+                                    $db_host = NULL,
+                                    $db_user = NULL,
+                                    $db_user_pwd = NULL,
+                                    $db_name = NULL,
+                                    $db_table_name = NULL,
+                                    $verbosity_mode
+                                  )
+    {
         $this->db_host = $db_host;
         $this->db_user = $db_user;
         $this->db_user_pwd = $db_user_pwd;
         $this->db_name = $db_name;
         $this->db_table_name = $db_table_name;
+        $this->ipdb_verbosity_mode = $verbosity_mode;
     }
     
-    public function insert_iplog_record ($ip_log_record = NULL, $full_trace_output = FALSE) 
+    private function verbosity_echo ( $string, $verbosity_mode ) {
+        
+        if ( $this->ipdb_verbosity_mode >= $verbosity_mode )
+            echo $string;
+    }
+    
+    public function insert_iplog_record ($ip_log_record = NULL ) 
     {
-        if (!$ip_log_record)
+        if ( !$ip_log_record )
             return IPLDB_ERR_IPL_RECORD_NULL;
             
-        if ($this->db_host && $this->db_user && $this->db_name && !$this->db_connection) {
+        if ( $this->db_host && $this->db_user && $this->db_name && !$this->db_connection ) {
+            
             $this->db_connection =  new mysqli
                                             (
                                             $this->db_host,
@@ -76,11 +104,18 @@ class IPlogDatabase {
                                             $this->db_name
                                             );
             // Check db connection
-            if ($this->db_connection->connect_errno) {
-                $this->dbg_echo ("Failed to connect to MySQL : " . mysqli_connect_error() . "\n", TRUE);
+            if ( $this->db_connection->connect_errno ) {
+                
+                $msg = "insert_iplog_record - Failed to connect to MySQL : " . mysqli_connect_error() . "\n";
+                
+                $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
+            
                 return IPLDB_ERR_UNABLE_TO_CONNECT_DB;
             }
-            $this->dbg_echo ("Connected to MySQL.\n", TRUE);
+            
+            $msg = "\ninsert_iplog_record : Connected to MySQL.\n";
+            
+            $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
             
             // Create SQL table
             $create_table_sql = "CREATE TABLE $this->db_table_name
@@ -98,11 +133,19 @@ class IPlogDatabase {
                                         InsertionTime TEXT
                                     )";
                     
-            $result = $this->db_connection->query ($create_table_sql);
-            if ($result)
-                echo "Table '$this->db_table_name' created successfully\n";
-            else
-                echo $this->db_connection->error . "\n";
+            $result = $this->db_connection->query ( $create_table_sql );
+            
+            if ( $result ) {
+                
+                $msg = "insert_iplog_record : Table '$this->db_table_name' created successfully\n";
+                
+                $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+            } else {
+               
+                $msg = "insert_iplog_record : " . $this->db_connection->error . "\n";
+                
+                $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+            }
         }
         
         // ensure we do not append a duplicate ip log record
@@ -118,19 +161,30 @@ class IPlogDatabase {
                     ";
         
         $result = $this->db_connection->query ($probe_sql);
-        if (!$result) {
+        
+        if ( !$result ) {
+            
             $this->last_failed_insertion_message = $this->db_connection->error;
+            
             return IPLDB_ERR_DB_PROBE_FAIL;
         }
 
 
-        $row = mysqli_fetch_array($result);
-        if ($row) {
-            dbg_echo ("Record probe successful, duplicate record detected\n", $full_trace_output);
+        $row = mysqli_fetch_array ( $result );
+        
+        if ( $row ) {
+            
+            $msg = "\ninsert_iplog_record : Record probe successful, duplicate record detected\n";
+            
+            $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
             return IPLDB_ERR_DB_DUPLICATE_IPADDRESS;
         }
-        dbg_echo ("No duplicate record detected\n", $full_trace_output);
-
+        
+        $msg = "\ninsert_iplog_record : No duplicate record detected\n";
+        
+        $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
         $insert_sql = "INSERT INTO $this->db_table_name
                             (
                                 IPid,
@@ -160,25 +214,28 @@ class IPlogDatabase {
         
             $result = $this->db_connection->query ($insert_sql);
             
-            if (!$result) {
+            if ( !$result ) {
+                
                 $this->last_failed_insertion_message = $this->db_connection->error;
-                dbg_echo ("Record insertion failed\n", TRUE);
+                
+                $msg = "insert_iplog_record : Record insertion failed\n";
+                
+                $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
                 return IPLDB_ERR_DB_INSERTION_FAIL;
             }
 
-        dbg_echo ("Record insertion successful\n", $full_trace_output);
+        $msg = "insert_iplog_record : Record insertion successful\n";
         
+        $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
         // record inserted
         return IPLDB_ERR_NONE;
     }
     
     public function get_ipldb_error () {
+        
         return $this->last_failed_insertion_message;
-    }
-    
-    private function dbg_echo ($string = NULL, $do_echo = FALSE) {
-        if ($do_echo)
-            echo $string;
     }
 }
 

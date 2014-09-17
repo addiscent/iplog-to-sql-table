@@ -2,13 +2,13 @@
 /*
     File: command-line-arguments.php
     Product:  iplog-to-sql-table
-    Rev 2014.0913.2200
-    Copyright (C) Charles Thomaston, ckthomaston@gmail.com
+    Rev 2014.0916.2030
+    Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
    
     Description:
 
-        The CommandLineArguments class collects switch arguments from the
-        command line and provides methods for acessing the switch arguments
+        The CommandLineArguments class collects arguments from the
+        command line and provides methods for acessing the arguments,
         and displaying program usage.
     
     Developer's notes:
@@ -33,226 +33,361 @@
         owners.
 */
 
-define ("CLA_ERR_MISSING_REQUIRED_ARGUMENT", 101);
-define ("CLA_ERR_MAX_LINES_INVALID", -1);
+// These definitions along with the class methods define the
+// CommandLineArguments Class Interface
+define ( "CLA_VERBOSITY_MODE_ALL", 100 );
+define ( "CLA_VERBOSITY_MODE_GENERAL", 70 );
+define ( "CLA_VERBOSITY_MODE_LOG", 40 );
+define ( "CLA_VERBOSITY_MODE_SILENT", 0 );
+
 
 class CommandLineArguments {
     
-    private $required_missing = FALSE;  // required command arguments are missing
+    private $required_present = array
+                                    (
+                                        "fname" => NULL,
+                                        "dhname" => NULL,
+                                        "duname" => NULL,
+                                        "dname" => NULL,
+                                        "tname" => NULL,
+                                        "hname" => NULL
+                                    );
 
-    // required for execution
-    private $ip_log_filename = NULL;
-    private $db_host_name = NULL; 
-    private $db_user_name = NULL;
-    private $db_user_password = NULL; // if open source, don't show my SQL db password
-    private $db_name = NULL;
-    private $db_table_name = NULL;
-    private $log_file_host_name = NULL;
+    private $cla_verbosity_mode = "gen";
     
-    // optional
-    private $insert_option = FALSE;
-    private $max_file_lines = 0; // read to EOF if < 1
-    private $parse_fail_break = FALSE;
-    private $insert_fail_break = FALSE;
-    private $full_trace_output = FALSE;
     
-
-    // Parse command line, set values, and annunciate appropriately.
-    // Some arguments are required, others optional
-    public function CommandLineArguments ($CLA_GET) {
+    public function CommandLineArguments () {
         
-        // get IP log file name from command line
-        if (array_key_exists ( 'fname', $CLA_GET )) {
-            $this->ip_log_filename = $CLA_GET['fname'];
-            $this->dbg_echo ("\nIP log file name : " . $this->ip_log_filename . "\n", TRUE);
-        } else {
-            echo "\nNo IP log file name specified.\n";
-            $this->required_missing = TRUE;
-        }
-
-        if (array_key_exists ( 'dhname', $CLA_GET )) {
-            $this->db_host_name = $CLA_GET['dhname'];
-            $this->dbg_echo ("SQL db host name : " . $this->db_host_name . "\n", TRUE);
-        } else {
-            echo "No SQL db host name specified.\n";
-            $this->required_missing = TRUE;
-        }
-
-        if (array_key_exists ( 'duname', $CLA_GET )) {
-            $this->db_user_name = $CLA_GET['duname'];
-            $this->dbg_echo ("SQL db user name : " . $this->db_user_name . "\n", TRUE);
-        } else {
-            echo "No SQL db user name specified.\n";
-            $this->required_missing = TRUE;
-        }
-
-        if (array_key_exists ( 'dupwd', $CLA_GET )) {
-            $this->db_user_password = $CLA_GET['dupwd'];
-            $this->dbg_echo ("SQL db user password : Specified, but not displayed for security\n", TRUE);
-        } else {
-            echo "No SQL db user password specified.\n";
-            $this->required_missing = TRUE;
-        }
-
-        if (array_key_exists ( 'dname', $CLA_GET )) {
-            $this->db_name = $CLA_GET['dname'];
-            $this->dbg_echo ("SQL db name : " . $this->db_name . "\n", TRUE);
-        } else {
-            echo "No SQL db name specified.\n";
-            $this->required_missing = TRUE;
-        }
-
-        if (array_key_exists ( 'tname', $CLA_GET )) {
-            $this->db_table_name = $CLA_GET['tname'];
-            $this->dbg_echo ("SQL table name : " . $this->db_table_name . "\n", TRUE);
-        } else {
-            echo "No SQL table name specified.\n";
-            $this->required_missing = TRUE;
-        }
-
-        if (array_key_exists ( 'hname', $CLA_GET )) {
-            $this->log_file_host_name = $CLA_GET['hname'];
-            $this->dbg_echo ("Host name, (domain or IP addr) : " . $this->log_file_host_name . "\n", TRUE);
-        } else {
-            echo "No Host name, (domain or IP addr), specified.\n";
-            $this->required_missing = TRUE;
+        // we must know cla_verbosity_mode first
+        if (array_key_exists ( 'vmode', $_GET ))
+            $this->cla_verbosity_mode = $_GET [ 'vmode' ];
+            
+        switch ($this->cla_verbosity_mode) {
+            
+            case "all" :
+                
+                $this->cla_verbosity_mode = CLA_VERBOSITY_MODE_ALL;
+                break;
+            
+            case "gen" :
+                
+                $this->cla_verbosity_mode = CLA_VERBOSITY_MODE_GENERAL;
+                break;
+            
+            case "log" :
+                
+                $this->cla_verbosity_mode = CLA_VERBOSITY_MODE_LOG;
+                break;
+    
+            case "silent" :
+                
+                $this->cla_verbosity_mode = CLA_VERBOSITY_MODE_SILENT;
+                break;
+            
+            default :
+                $this->cla_verbosity_mode = CLA_VERBOSITY_MODE_GENERAL;
         }
         
-        if ($this->required_missing) {
-            $this->dbg_echo ("\nRequired arguments not specified\n");
-            $this->display_usage ();
-        }
-        else {   // all required has been specified, display options
-            // user may want to insert record into SQL database
-            if (array_key_exists ( 'insert', $CLA_GET )) {
-                $this->insert_option = TRUE;
-                $this->dbg_echo ("\nSQL insert-record-option set\n", TRUE);
-            } else
-                $this->dbg_echo ("\nNOTICE : SQL insert-record-option NOT set\n", TRUE);
-    
-            // user may want max num of IP log file lines to read and insert into table.
-            // Typically set to a low value during debug, very high in production
-            if (array_key_exists ( 'maxl', $CLA_GET )) {
-                $this->max_file_lines = $CLA_GET['maxl'];
-                if ($this->max_file_lines < 1) {
-                    $this->dbg_echo ("Maximum number of lines specified is invalid : " . $this->max_file_lines . "\n", TRUE);
-                    $this->max_file_lines = CLA_ERR_MAX_LINES_INVALID;
-                } else
-                    $this->dbg_echo ("Maximum number of lines specified to read from IP list : " . $this->max_file_lines . "\n", TRUE);
-            } else {
-                $this->max_file_lines = 1.0e9; // attempt some very large number of lines before EOF
-                $this->dbg_echo ("\nMaximum number of lines not specified, reading to EOF\n", TRUE);
-            }
+        // initialize $required_missing
+        if ( array_key_exists ( 'fname', $_GET ) )
+            $this->required_present [ 'fname' ] = $_GET [ 'fname' ];
 
-            // user may want to break on parse fail
-            if (array_key_exists ( 'pbrk', $CLA_GET )) {
-                $this->parse_fail_break = TRUE;
-                $this->dbg_echo ("IP log file parse-fail-break set to break.\n", TRUE);
-            }
-    
-            // user may want to break on insertion into SQL table fail
-            if (array_key_exists ( 'ibrk', $CLA_GET )) {
-                $this->insert_fail_break = TRUE;
-                $this->dbg_echo ("SQL record insertion-fail-break set to break.\n", TRUE);
-            }
-    
-            // user may want max verbosity
-            if (array_key_exists ( 'maxverb', $CLA_GET )) {
-                $this->full_trace_output = TRUE;
-                $this->dbg_echo ("Output tracing set to max verbosity.\n", TRUE);
-            }
-        }
-    }
+        if ( array_key_exists ( 'dhname', $_GET ) )
+            $this->required_present [ 'dhname' ] = $_GET [ 'dhname' ];
 
-    public function display_usage () {
-        echo "\nUsage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername\n"
-            . "        dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname\n"
-            . "        [insert] [maxl=number] [pbrk] [ibrk] [maxverb]\n"
-            . "\nWhere:  fname=   IP log file name, (required)\n"
-            . "       dhname=   SQL db server, (host), name, (required)\n"
-            . "       duname=   SQL db user name, (required)\n"
-            . "        dupwd=   SQL db user password, (required)\n"
-            . "        dname=   SQL db name, (required)\n"
-            . "        tname=   SQL db table, (required)\n"
-            . "        hname=   Host domain name or IP address, (required)\n"
-            . "        insert   No Argument.  Causes insertion of successfully\n"
-            . "                 parsed/validated IP record, (optional)\n"
-            . "         maxl=   Integer, maximum number of lines to\n"
-            . "                 read from IP log file, (optional)\n"
-            . "          pbrk   No Argument.  Causes  exit if a parse error\n"
-            . "                 is encountered, (optional)\n"
-            . "          ibrk   No Argument.  Causes exit if an insertion error\n"
-            . "                 is encountered, (optional)\n"
-            . "       maxverb   No Argument.  Enables all tracing echo\n";
-    }
-    
-    public function is_required_missing () {
-        return $this->required_missing;
-    }
+        if ( array_key_exists ( 'duname', $_GET ) )
+            $this->required_present [ 'duname' ] = $_GET [ 'duname' ];
 
-    public function get_iplogfile_name () {
-        
-        return $this->ip_log_filename;
-    }
+        if ( array_key_exists ( 'dname', $_GET ) )
+            $this->required_present [ 'dname' ] = $_GET [ 'dname' ];
+
+        if ( array_key_exists ( 'tname', $_GET ) )
+            $this->required_present [ 'tname' ] = $_GET [ 'tname' ];
+
+        if ( array_key_exists ( 'hname', $_GET ) )
+            $this->required_present [ 'hname' ] = $_GET [ 'hname' ];
+}
     
-    public function get_db_host_name () {
+    private function verbosity_echo ( $string, $verbosity_mode ) {
         
-        return $this->db_host_name;
-    }
-    
-    public function get_db_user_name () {
-        
-        return $this->db_user_name;
-    }
-    
-    public function get_db_user_password () {
-        
-        return $this->db_user_password;
-    }
-    
-    public function get_db_name () {
-        
-        return $this->db_name;
-    }
-    
-    public function get_db_table_name () {
-        
-        return $this->db_table_name;
-    }
-    
-    public function get_log_file_host_name () {
-        
-        return $this->log_file_host_name;
-    }
-    
-    public function get_insert_option () {
-        
-        return $this->insert_option;
-    }
-    
-    public function get_max_file_lines () {
-        
-        return $this->max_file_lines;
-    }
-    
-    public function get_parse_fail_break () {
-        
-        return $this->parse_fail_break;
-    }
-    
-    public function get_insert_fail_break () {
-        
-        return $this->insert_fail_break;
-    }
-    
-    public function get_full_trace_output () {
-        
-        return $this->full_trace_output;
-    }
-    
-    private function dbg_echo ($string, $do_echo = FALSE) {
-        if ($do_echo)
+        if ( $this->cla_verbosity_mode >= $verbosity_mode )
             echo $string;
+    }
+    
+    public function is_required_missing ( &$return_msg ) {
+        
+       foreach ( $this->required_present as $arg ) {
+            
+            if ( !$arg ) {
+                
+                $return_msg = "required_missing : Required arguments are missing from command line.\n";
+                return TRUE;
+            }
+        }
+        
+        $return_msg = "required_missing : NO required arguments are missing from command line.\n";
+            
+        return FALSE;
+    }
+
+    public function get_iplogfile_name ( &$return_msg ) {
+        
+        if ( !$this->required_present [ 'fname' ] )
+            $return_msg = "fname : No IP log file name specified.\n";
+        else
+            $return_msg = "fname : " . $this->required_present [ 'fname' ] . "\n";
+
+        return $this->required_present [ 'fname' ];
+    }
+    
+    public function get_db_host_name ( &$return_msg ) {
+        
+        if ( !$this->required_present [ 'dhname' ] )
+            $return_msg = "dhname : No SQL db host name specified.\n";
+        else
+            $return_msg = "dhname : " . $this->required_present [ 'dhname' ] . "\n";
+
+        return $this->required_present [ 'dhname' ];
+    }
+    
+    public function get_db_user_name ( &$return_msg ) {
+        
+        if ( !$this->required_present [ 'duname' ] )
+            $return_msg = "duname : No SQL db host name specified.\n";
+        else
+            $return_msg = "duname : " . $this->required_present [ 'duname' ] . "\n";
+
+        return $this->required_present [ 'duname' ];
+    }
+    
+    public function get_db_user_password ( &$return_msg ) {
+        
+        if ( array_key_exists ( 'dupwd', $_GET ) ) {
+        
+            $db_user_password = $_GET [ 'dupwd' ];
+
+            $return_msg = "dupwd : Password specified but not shown for security\n";
+            
+        } else
+            $return_msg = "dupwd : No db user password specified\n";
+
+        return $db_user_password;
+    }
+    
+    public function get_db_name ( &$return_msg ) {
+        
+        if ( !$this->required_present [ 'dname' ] )
+            $return_msg = "dname : No SQL db host name specified.\n";
+        else
+            $return_msg = "dname : " . $this->required_present [ 'dname' ] . "\n";
+
+        return $this->required_present [ 'dname' ];
+    }
+    
+    public function get_db_table_name ( &$return_msg ) {
+        
+        if ( !$this->required_present [ 'tname' ] )
+            $return_msg = "tname : No SQL db host name specified.\n";
+        else
+            $return_msg = "tname : " . $this->required_present [ 'tname' ] . "\n";
+
+        return $this->required_present [ 'tname' ];
+    }
+    
+    public function get_log_file_host_name ( &$return_msg ) {
+        
+        if ( !$this->required_present [ 'hname' ] )
+            $return_msg = "hname : No SQL db host name specified.\n";
+        else
+            $return_msg = "hname : " . $this->required_present [ 'hname' ] . "\n";
+
+        return $this->required_present [ 'hname' ];
+    }
+    
+    public function get_insert_option ( &$return_msg ) {
+        
+        $insert_option = FALSE;
+        
+        if ( array_key_exists ( 'insert', $_GET ) ) {
+            
+            $insert_option = TRUE;
+            $return_msg = "insert : SQL insert-record-option set\n";
+            
+        } else
+            $return_msg = "insert : NOTICE - SQL insert-record-option NOT set.\n";
+
+        return $insert_option;
+    }
+    
+    public function get_max_file_lines ( &$return_msg ) {
+        
+        if ( array_key_exists ( 'maxl', $_GET ) ) {
+            
+            $max_file_lines = $_GET [ 'maxl' ];
+            
+            if ( ( $max_file_lines < 0 ) || !is_numeric ( $max_file_lines ) ) {
+                
+                $return_msg = "maxl : '$max_file_lines' is invalid, setting maximum nuber of lines to 0\n";
+                
+                $max_file_lines = 0;
+            } else {
+                
+                $return_msg = "maxl : $max_file_lines\n";
+            }
+        } else {
+            
+            $max_file_lines = 1.0e9; // will hit EOF before reaching this number
+            $return_msg = "maxl : EOF\n";
+        }
+
+        return $max_file_lines;
+    }
+    
+    public function get_parse_fail_break ( &$return_msg ) {
+        
+        $parse_fail_break = FALSE;
+        
+        if ( array_key_exists ( 'pbrk', $_GET ) ) {
+            
+            $parse_fail_break = TRUE;
+            $return_msg = "pbrk : IP log file parse-validate-fail-break set to break.\n";
+            
+        } else
+            $return_msg = "pbrk : IP log file parse-validate-fail-break set to not break.\n";
+
+        return $parse_fail_break;
+    }
+    
+    public function get_insert_fail_break ( &$return_msg ) {
+        
+        $insert_fail_break = TRUE;
+        
+        if ( array_key_exists ( 'ibrk', $_GET ) ) {
+            
+            $insert_fail_break = TRUE;
+            $return_msg = "ibrk : SQL record insertion-fail-break set to break.\n";
+            
+        } else
+            $return_msg = "ibrk : SQL record insertion-fail-break set to not break.\n";
+
+        return $insert_fail_break;
+    }
+    
+    public function get_verbosity_mode ( &$return_msg ) {
+        
+        switch ($this->cla_verbosity_mode) {
+            
+            case CLA_VERBOSITY_MODE_ALL :
+                
+                $return_msg = "vmode : all\n";
+                break;
+            
+            case CLA_VERBOSITY_MODE_GENERAL :
+                
+                $return_msg = "vmode : gen\n";
+                break;
+            
+            case CLA_VERBOSITY_MODE_LOG :
+                
+                $return_msg = "vmode : log\n";
+                break;
+    
+            case CLA_VERBOSITY_MODE_SILENT :
+                
+                $return_msg = "vmode : silent\n";
+                break;
+            
+            default :
+                
+                $return_msg = "vmode : Default display tracing set to 'gen'.\n";
+        }
+        
+        return $this->cla_verbosity_mode;
+    }
+    
+    public function get_items_of_interest ( &$return_msg ) {
+        
+        $items_of_interest = FALSE;
+        
+        if ( array_key_exists ( 'ioi', $_GET ) ) {
+            
+            $items_of_interest = TRUE;
+            $return_msg = "ioi : Item Of Interest set\n";
+            
+        } else
+            $return_msg = "ioi : Item Of Interest not set\n";
+
+        return $items_of_interest;
+    }
+    
+    public function display_usage ()
+    {
+        
+echo "
+Usage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername
+        dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname
+        [insert] [maxl=number] [pbrk] [ibrk] [vmode=enum]
+
+Where:  fname=   IP log file name, (required)
+
+       dhname=   SQL db server, (host), name, (required)
+       
+       duname=   SQL db user name, (required)
+       
+        dupwd=   SQL db user password, (required)
+        
+        dname=   SQL db name, (required)
+        
+        tname=   SQL db table, (required)
+        
+        hname=   Host domain name or IP address, (required)
+        
+        insert   No argument. Causes insertion into db of successfully
+                 parsed/validated IP records
+                 
+         maxl=   Optional. Maximum number of lines to read from IP log
+                 file. Typically only used during debugging/testing.
+                 If not specified, the program default is to read to
+                 input IP log file EOF
+                 
+          pbrk   Optional. No argument. Causes exit if a parse error
+                 is encountered. Typically only used during
+                 debugging/testing
+                 
+          ibrk   Optional. No argument. Causes exit if an insertion
+                 error is encountered, (optional)
+                 
+    vmode=enum   Sets verbosity mode, specified by enum.  'vmode' is a
+                 level of tracing verbosity ranging from 'all', (max
+                 STDOUT messages enabled), to 'silent', (all STDOUT
+                 messages disabled).  Between the two, 'gen', (General),
+                 has more STDOUT messages than 'log', (logging mode).
+                 
+                    all - Maximum verbosity. Very detailed tracing.
+                          Typically only used for debugging/testing.
+                          Used most often in combination with the maxl
+                          option
+                          
+                    gen - General. Displays information typically
+                          desired when executed by command line user,
+                          such as settings of required command line
+                          arguments and options, error messages
+                          indicating processing results, and a complete
+                          summary  
+                          
+                    log - Logging. Limits verbosity to most important
+                          statistics needed for logging  
+                          
+                 silent - Program will emit no output to STDOUT
+                 
+          ioi    Optional. No argument. Forces display of an 'Item of
+                 Interest'. This is a data or event item which will be
+                 displayed regardless of the 'vmode' setting, (except
+                 for 'silent', nothing is displayed during 'silent'
+                 vmode). At this time, there is only one IOI, which is
+                 the 'MethodURI field malformed' error annunciation.
+";
+
     }
 }
 

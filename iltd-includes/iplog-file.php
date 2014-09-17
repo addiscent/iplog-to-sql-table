@@ -2,8 +2,8 @@
 /*
     File: iplog-file.php
     Product:  iplog-to-sql-table
-    Rev 2014.0913.2200
-    Copyright (C) Charles Thomaston, ckthomaston@gmail.com
+    Rev 2014.0916.2030
+    Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
    
     Description:
     
@@ -41,7 +41,7 @@
             IPAddr, -, -, time, MethodURI, Status, PageSize(returned by host), Referer, Agent
      
         The -, (hyphen), fields are fields for which data was not available at
-        the time of the log entry.  The first two hyphens have not been seen to
+        the time of the log entry. The first two hyphens have not been seen to
         change to other values while testing logs of various vintages.
         However, they could make a surprise reappearance some day, which will
         break the parser code, so mantenance developers or source code re-users
@@ -59,14 +59,14 @@
         This is allowed as a valid field for insertion into the database.
         
         Dependeing on the access Method, the Referer and Agent fields may
-        appear in the log file as a hyphen.  The PageSize also appears as a
+        appear in the log file as a hyphen. The PageSize also appears as a
         "-" in some records, (without quotes), if there is no object returned.
         Also, note that this code converts the PageSize field on the fly from
         hyphen to -1 if necessary, becaues PageSize must be an INT in the SQl
         db table.
      
         Some validation and adjustment is done by this function, for a few
-        fields.  It is up to caller to determine whether to ignore detectable
+        fields. It is up to caller to determine whether to ignore detectable
         errors, indicated by return value NULL.
 
         For more information about re-using the source code in this product, see
@@ -87,6 +87,15 @@
         Use at your own risk, author is not liable for damages, product is not
         warranted to be useful for anything, copyrights held by their respective
         owners.
+*/
+
+/*
+    These definitions are part of the CommandLineArguments Class Interface
+    
+    define ( "CLA_VERBOSITY_MODE_ALL", ... );
+    define ( "CLA_VERBOSITY_MODE_GENERAL", ... );
+    define ( "CLA_VERBOSITY_MODE_LOG", ... );
+    define ( "CLA_VERBOSITY_MODE_SILENT", ... );
 */
 
 define ("IPLF_ERR_UNABLE_TO_OPEN_FILE", 101);
@@ -146,23 +155,31 @@ private $http_methods = array
                         "VERSION-CONTROL"
                     );
 
+    private $iplf_verbosity_mode = CLA_VERBOSITY_MODE_GENERAL;
+    
     private $ip_log_filename = NULL;
     private $ip_log_filehandle = NULL;
-    
-    public function IPlogFile ($ip_log_filename = NULL) {
+
+    public function IPlogFile ( $ip_log_filename = NULL, $verbosity_mode = CLA_VERBOSITY_MODE_GENERAL ) {
+        
         $this->ip_log_filename = $ip_log_filename;
+        $this->iplf_verbosity_mode = $verbosity_mode;
     }
     
     public function __destruct () {
         
         if ($this->ip_log_filehandle) {
-            // close log file
             fclose ($this->ip_log_filehandle);
-            dbg_echo ("Closed IP log file.\n", TRUE);
         }
     }
     
-    public function get_iplog_record ($ip_record_id, &$ip_record_line,  $full_trace_output =  FALSE) {
+    private function verbosity_echo ( $string, $verbosity_mode ) {
+        
+        if ( $this->iplf_verbosity_mode >= $verbosity_mode )
+            echo $string;
+    }
+    
+    public function get_iplog_record ( $ip_record_id, &$ip_record_line, $item_of_interest, &$return_msg ) {
         
         // open the IP log file if this is the first get_iplog_record()
         if ($this->ip_log_filename && !$this->ip_log_filehandle) {
@@ -171,56 +188,58 @@ private $http_methods = array
             $this->ip_log_filehandle = fopen ($this->ip_log_filename, "r");
             
             if (!$this->ip_log_filehandle) {
-                $this->dbg_echo ("\nUnable to open IP log file : $this->ip_log_filename\n", TRUE);
+                
+                $msg = "\nget_iplog_record - Unable to open IP log file : $this->ip_log_filename\n";
+                
+                verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
+                    
                 return IPLF_ERR_UNABLE_TO_OPEN_FILE;
             }
-            $this->dbg_echo ("Opened IP log file : $this->ip_log_filename\n", TRUE);
+            $msg = "get_iplog_record - Opened IP log file : $this->ip_log_filename\n";
+            
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
         }
         
-        // read a line of file. Display trace info
-        $ip_record_line = fgets($this->ip_log_filehandle);
+        $ip_record_line = fgets ( $this->ip_log_filehandle );
         
-        if (!$ip_record_line) {
-            dbg_echo ( "\nIP log file returned EOF, done parsing records.\n", TRUE);
+        if ( !$ip_record_line ) {
+            
+            $msg = "\nget_iplog_record - IP log file returned EOF : Done parsing records.\n\n";
+            
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
             return IPLF_EOF_IPLOG; // no record to return
         }
     
-        // parse and validate fields from IP record line
-        $ip_evnt_flds = $this->parse_lfln_array($ip_record_id,$ip_record_line, $full_trace_output);
+        // parse, (and validate one), fields from IP record line
+        $ip_evnt_flds = $this->parse_lfln_array ( $ip_record_id, $ip_record_line, $item_of_interest, $return_msg );
 
+        verbosity_echo ( $return_msg, CLA_VERBOSITY_MODE_ALL );
+                
         return $ip_evnt_flds;
     }
     
-    private function dbg_echo ($string = NULL, $do_echo = FALSE) {
-        if ($do_echo)
-            echo $string;
-    }
-    
-    private function is_http_method ($method = NULL) {
+    private function is_http_method ( $method = NULL ) {
+        
         foreach ($this->http_methods as $a_method) {
-            dbg_echo ("\nMethod is : $method\n", FALSE);
-            dbg_echo ("a_method is : $a_method\n", FALSE);
+            
             if ($method == $a_method)
                 return TRUE;
         }
         return FALSE;
     }
     
-    // Remove undesired preceding chars from the beginning of $in_string.
-    //      $in_string:  string to remove chars from, (left end)
-    //      $strstr_arg: remove all chars from left of $in_string,
-    //                   up to, but not including, $strstr_arg
-    //      Note: strstr() leaves $strstr_arg match not removed, must use
-    //            ltrim() to remove it
-    private function ltrim_to_data ($in_string = NULL, $strstr_arg = NULL) {
-        $str_remain = strstr ($in_string, $strstr_arg);
-        $str_remain = ltrim ($str_remain, $strstr_arg);
+    private function ltrim_to_data ( $in_string = NULL, $strstr_arg = NULL ) {
+        
+        $str_remain = strstr ( $in_string, $strstr_arg );
+        $str_remain = ltrim ( $str_remain, $strstr_arg );
+        
         return $str_remain;
     }
     
     // Return an array containing IP log file line fields.
-    // Returns NULL if function cannot correctly populate an array to return
-    private function parse_lfln_array ($ip_record_id, $ip_record_line, $display_trace = FALSE) {
+    // Returns NULL if function cannot correctly populate an array to return.
+    private function parse_lfln_array ( $ip_record_id, $ip_record_line, $item_of_interest, &$return_msg = NULL ) {
         
         //   Parsed fields from IP log file
         $ip_evnt_flds = array
@@ -241,121 +260,194 @@ private $http_methods = array
          // the code below walks through $string_remainder during parsing
         $string_remainder = $ip_record_line;
         
-        dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", $display_trace);
+        $msg = "\nparse_lfln_array - IP log line number : $ip_record_id\n";
         
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
         // get the IP address string, by retrieving the string up to the first
-        // blank space, (exclusive). If malformed, abort
-        $ip_evnt_flds["IPaddress"] = strstr ($string_remainder, " ", TRUE);
-        $long = ip2long ($ip_evnt_flds["IPaddress"]);
-        if (($long == -1) || ($long === FALSE)) {
-            dbg_echo ("IPaddress field is invalid - parsing aborted for this record\n", TRUE);
+        // blank space, (exclusive). If malformed, or invalid IP address, abort
+        $ip_evnt_flds [ "IPaddress" ] = strstr ( $string_remainder, " ", TRUE );
+        
+        $long = ip2long ( $ip_evnt_flds [ "IPaddress" ] );
+        
+        if ( ( $long == -1 ) || ( $long === FALSE ) ) {
+
+            $msg = "parse_lfln_array : IPaddress field is invalid, parsing aborted for this record\n";
+            
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
             return NULL;
         }
-        dbg_echo ("IPaddress : " . $ip_evnt_flds["IPaddress"] . "\n", $display_trace);
+        
+        $msg = "parse_lfln_array - IPaddress : " . $ip_evnt_flds [ 'IPaddress' ] . "\n";
     
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+            
         // remove the IP addr and undesired space and dash chars from the beginning
         // of the remainder string
-        $string_remainder = $this->ltrim_to_data ($string_remainder, " - - [");
+        $string_remainder = $this->ltrim_to_data ( $string_remainder, " - - [" );
     
         // get the date-time stamp string. If malformed, abort
-        $ip_evnt_flds["DateTime"] = strstr ($string_remainder, "]", TRUE);
-        if ($ip_evnt_flds["DateTime"] == FALSE) {
-            if (!$display_trace) // don't show again if already full tracing
-                dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
-            dbg_echo ("DateTime field is invalid - parsing aborted for this record\n", TRUE);
+        $ip_evnt_flds [ "DateTime" ] = strstr ( $string_remainder, "]", TRUE );
+        
+        if ( $ip_evnt_flds [ "DateTime" ] == FALSE ) {
+            
+            $msg = "parse_lfln_array : DateTime field is malformed, parsing aborted for this record\n";
+            
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
             return NULL;
         }
-        dbg_echo ("DateTime : " . $ip_evnt_flds["DateTime"] . "\n", $display_trace);
-    
+        
+        $msg = "parse_lfln_array - DateTime : " .$ip_evnt_flds [ 'DateTime' ] . "\n";
+        
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
         // remove the date-time stamp and undesired space, dash, and double-quote
         // chars from the beginning of the remainder string
-        $string_remainder = $this->ltrim_to_data ($string_remainder, '] "');
+        $string_remainder = $this->ltrim_to_data ( $string_remainder, '] "' );
     
         // get the request method string, which includes URI argument to method and
-        // HTTP version info. If not a valid HTTP Method, or a "-", the
-        // abort
-        $ip_evnt_flds["MethodURI"] = strstr($string_remainder, '"', TRUE);
-        if ($ip_evnt_flds["MethodURI"] != "-") {
-            $method = strstr ($ip_evnt_flds["MethodURI"], " ", TRUE);
-            if (!$this->is_http_method($method)) {
-                $methodURI = $ip_evnt_flds["MethodURI"];
-                if (!$display_trace) // don't show again if already full tracing
-                    dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
-                dbg_echo ("Invalid Method : '$methodURI' - parsing aborted for this record\n", TRUE);
-                return NULL;
+        // HTTP version info. If not a valid HTTP Method, or a "-", abort
+        $ip_evnt_flds [ "MethodURI" ] = strstr ( $string_remainder, '"', TRUE );
+        
+        if ( $ip_evnt_flds [ "MethodURI" ] != "-" ) {
+            
+            $method = strstr ( $ip_evnt_flds [ "MethodURI" ], " ", TRUE );
+            
+            switch ( $method ) {
+                
+                case FALSE :
+                    
+                    if ( $this->iplf_verbosity_mode == CLA_VERBOSITY_MODE_GENERAL)
+                        echo "\n"; // display formatting is driving me crazy
+
+                    $msg = "parse_lfln_array : IP log file line $ip_record_id MethodURI field is malformed, parsing aborted for this record\n";
+                    
+                    if ( $item_of_interest )
+                        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
+                    else
+                        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                        
+                    return NULL;
+
+                case !$this->is_http_method ( $method ) :
+                
+                    $methodURI = $ip_evnt_flds [ "MethodURI" ];
+                    
+                    $msg = "parse_lfln_array - Invalid Method : '$methodURI' - parsing aborted for this record\n";
+                    
+                    verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
+                    return NULL;
+                    
+                default :
             }
         }
-        dbg_echo ("MethodURI : " . $ip_evnt_flds["MethodURI"] . "\n", $display_trace);
-    
+        
+        $msg = "parse_lfln_array - MethodURI : " .$ip_evnt_flds [ 'MethodURI' ] . "\n";
+        
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
         // remove the request, which includes HTTP version info and undesired
         // double-quote char and space from the beginning of the remainder string
-        $string_remainder = $this->ltrim_to_data ($string_remainder, '" ');
+        $string_remainder = $this->ltrim_to_data ( $string_remainder, '" ' );
     
         // get the server status reply, (converts to INT).
         // If malformed, abort
-        $ip_evnt_flds["Status"] = strstr($string_remainder, " ", TRUE);
-        if (!is_numeric ($ip_evnt_flds["Status"])) {
-            if (!$display_trace) // don't show again if already full tracing
-                dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
-            dbg_echo ("Status field is invalid - parsing aborted for this record\n", TRUE);
+        $ip_evnt_flds [ "Status" ] = strstr ( $string_remainder, " ", TRUE );
+        
+        if ( !is_numeric ( $ip_evnt_flds ["Status" ] ) ) {
+            
+            $msg = "parse_lfln_array : Status field is invalid, parsing aborted for this record\n";
+        
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                    
             return NULL;
         }
-        dbg_echo ("Status : " . $ip_evnt_flds["Status"] . "\n", $display_trace);
+        
+        $msg = "parse_lfln_array - Status : " .$ip_evnt_flds [ 'Status' ] . "\n";
     
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
         // remove the server status and undesired space char from the
         // beginning of the remainder string
-        $string_remainder = $this->ltrim_to_data ($string_remainder, " ");
+        $string_remainder = $this->ltrim_to_data ( $string_remainder, " " );
     
         // get the size of the object returned to the agent, (converts to INT).
         // If size of object is "-", convert to INT of value 0.
         // If malformed, abort
-        $ip_evnt_flds["PageSize"] = strstr($string_remainder, " ", TRUE);
-        if ($ip_evnt_flds["PageSize"] == "-") {
-            dbg_echo ("PageSize : hyphen (-), forcing PageSize value to : "
-                . PAGESIZE_ADJUST_VALUE . "\n", $display_trace);
-            $ip_evnt_flds["PageSize"] = PAGESIZE_ADJUST_VALUE;
+        $ip_evnt_flds [ "PageSize" ] = strstr ( $string_remainder, " ", TRUE );
+        
+        if ( $ip_evnt_flds ["PageSize" ] == "-" ) {
+            
+            $msg = "parse_lfln_array - PageSize : hyphen (-), forcing PageSize value to : "
+                            . PAGESIZE_ADJUST_VALUE . "\n";
+        
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
+            $ip_evnt_flds [ "PageSize" ] = PAGESIZE_ADJUST_VALUE;
         }
         else {
-            if (!is_numeric ($ip_evnt_flds["PageSize"])) {
-                if (!$display_trace) // don't show again if already full tracing
-                    dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
-                dbg_echo ("PageSize field is invalid - parsing aborted for this record\n", TRUE);
+            
+            if ( !is_numeric ( $ip_evnt_flds [ "PageSize" ] ) ) {
+                
+                $msg = "parse_lfln_array - PageSize : PageSize field is invalid, parsing aborted for this record\n";
+            
+                verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                
                 return NULL;
             }
-            dbg_echo ("PageSize : " . $ip_evnt_flds["PageSize"] . "\n", $display_trace);
         }
     
+        $msg = "parse_lfln_array - PageSize : " .$ip_evnt_flds [ 'PageSize' ] . "\n";
+        
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+
         // remove the size of the object and undesired space and double-quote chars
         // from the beginning of the remainder string
-        $string_remainder = $this->ltrim_to_data ($string_remainder, ' "');
+        $string_remainder = $this->ltrim_to_data ( $string_remainder, ' "' );
     
         // get the Referer string.  If malformed, abort
-        $ip_evnt_flds["Referer"] = strstr($string_remainder, '"', TRUE);
-        if ($ip_evnt_flds["Referer"] == FALSE) {
-            if (!$display_trace) // don't show again if already full tracing
-                dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
-            dbg_echo ("Referer field is malformed - parsing aborted for this record\n\n", TRUE);
+        $ip_evnt_flds [ 'Referer' ] = strstr ( $string_remainder, '"', TRUE );
+        
+        if ($ip_evnt_flds[ 'Referer' ] == FALSE) {
+            
+            $msg = "parse_lfln_array - Referer : Referer field is malformed, parsing aborted for this record\n";
+            
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+
             return NULL;
         }
-        dbg_echo ("Referer : " . $ip_evnt_flds["Referer"] . "\n", $display_trace);
-    
+        
+        $msg = "parse_lfln_array - Referer : " .$ip_evnt_flds [ 'Referer' ] . "\n";
+        
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+
         // remove the Referer string and undesired space and double-quote chars
         // from the beginning of the remainder string
-        $string_remainder = $this->ltrim_to_data ($string_remainder, ' "');
+        $string_remainder = $this->ltrim_to_data ( $string_remainder, ' "' );
     
         // get the agent string. If malformed, abort
-        $ip_evnt_flds["Agent"] = strstr($string_remainder, '"', TRUE);
-        if ($ip_evnt_flds["Agent"] == FALSE) {
-            if (!$display_trace) // don't show again if already full tracing
-                dbg_echo ("\nIP log line number : " . $ip_record_id . "\n", TRUE);
-            dbg_echo ("Agent field is malformed - parsing aborted for this record\n", TRUE);
+        $ip_evnt_flds [ "Agent" ] = strstr ( $string_remainder, '"', TRUE );
+        
+        if ( $ip_evnt_flds [ "Agent" ] == FALSE ) {
+            
+            $msg = "parse_lfln_array - Agent : Agent field is malformed, parsing aborted for this record\n";
+            
+            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+    
             return NULL;
         }
-        dbg_echo ("Agent : " . $ip_evnt_flds["Agent"] . "\n", $display_trace);
         
+        $msg = "parse_lfln_array - Agent : " .$ip_evnt_flds [ 'Agent' ] . "\n";
+        
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+        
+        $return_msg = "parse_lfln_array : Completed with no errors\n";
+
         return $ip_evnt_flds;
     }
 }
 
 ?>
-
