@@ -85,8 +85,8 @@
         IMPORTANT - The use of the "insert" option is REQUIRED if you wish
         records to be inserted into the SQL database.  By default, the "insert"
         option is NOT SET.  This gives the behavior of making the program "safe"
-        to use for examination of success/fail rates of IP log parsing and
-        validation errors, without commtting records to the SQL database.
+        by default to use for examination of success/fail rates of IP log parsing
+        and validation errors, without commtting records to the SQL database.
         
     Files:
     

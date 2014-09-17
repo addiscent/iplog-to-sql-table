@@ -1,10 +1,11 @@
 iplog-to-sql-table
 ==================
 
-    Reads an IP log file and inserts into an SQL database table one record of fields for each line.
-        
 Description:
 
+    A command line PHP script which reads an IP log file and inserts into an
+    SQL database table one record of fields for each line.
+        
     If parsing an IP log file line fails due to malformed fields, or if the 
     field does not pass validation, that record will not be inserted into the
     table.  However, further attempts will be made to fetch, parse, and insert
@@ -81,8 +82,8 @@ Description:
     IMPORTANT - The use of the "insert" option is REQUIRED if you wish
     records to be inserted into the SQL database.  By default, the "insert"
     option is NOT SET.  This gives the behavior of making the program "safe"
-    to use for examination of success/fail rates of IP log parsing and
-    validation errors, without commtting records to the SQL database.
+    by default to use for examination of success/fail rates of IP log parsing
+    and validation errors, without commtting records to the SQL database.
     
 Files:
 
