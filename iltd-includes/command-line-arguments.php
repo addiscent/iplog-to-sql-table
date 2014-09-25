@@ -2,7 +2,7 @@
 /*
     File: command-line-arguments.php
     Product:  iplog-to-sql-table
-    Rev 2014.0916.2030
+    Rev 2014.0924.2100
     Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
    
     Description:
@@ -227,9 +227,10 @@ class CommandLineArguments {
             
             if ( ( $max_file_lines < 0 ) || !is_numeric ( $max_file_lines ) ) {
                 
-                $return_msg = "maxl : '$max_file_lines' is invalid, setting maximum nuber of lines to 0\n";
+                $return_msg = "maxl : '$max_file_lines' is invalid, setting maximum number of lines to 0\n";
                 
                 $max_file_lines = 0;
+                
             } else {
                 
                 $return_msg = "maxl : $max_file_lines\n";
@@ -237,10 +238,37 @@ class CommandLineArguments {
         } else {
             
             $max_file_lines = 1.0e9; // will hit EOF before reaching this number
+            
             $return_msg = "maxl : EOF\n";
         }
 
         return $max_file_lines;
+    }
+    
+    public function get_max_duplicates ( &$return_msg ) {
+        
+        if ( array_key_exists ( 'maxdup', $_GET ) ) {
+            
+            $max_duplicate_count = $_GET [ 'maxdup' ];
+            
+            if ( ( $max_duplicate_count < 1 ) || !is_numeric ( $max_duplicate_count ) ) {
+                
+                $return_msg = "maxdup : '$max_duplicate_count' is invalid, setting maximum number of duplicates to ITST_NO_LIMIT\n";
+                
+                $max_duplicate_count = ITST_NO_DUP_LIMIT;
+                
+            } else {
+                
+                $return_msg = "maxdup : $max_duplicate_count\n";
+            }
+        } else {
+            
+            $max_duplicate_count = ITST_NO_DUP_LIMIT; // will hit EOF before reaching this number
+            
+            $return_msg = "maxdup : ITST_NO_DUP_LIMIT\n";
+        }
+
+        return $max_duplicate_count;
     }
     
     public function get_parse_fail_break ( &$return_msg ) {
@@ -326,7 +354,7 @@ class CommandLineArguments {
 echo "
 Usage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername
         dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname
-        [insert] [maxl=number] [pbrk] [ibrk] [vmode=enum]
+        [insert] [maxl=number] [maxdup=number] [pbrk] [ibrk] [vmode=enum]
 
 Where:  fname=   IP log file name, (required)
 
@@ -349,6 +377,12 @@ Where:  fname=   IP log file name, (required)
                  file. Typically only used during debugging/testing.
                  If not specified, the program default is to read to
                  input IP log file EOF
+                 
+       maxdup=   Optional. Stop processing when this number of duplicate
+                 records is reached. Because duplicate are searched for
+                 from most recent in time to oldest, this will reduce
+                 the amount of unnecessary search time. Default is
+                 ITST_NO_LIMIT
                  
           pbrk   Optional. No argument. Causes exit if a parse error
                  is encountered. Typically only used during

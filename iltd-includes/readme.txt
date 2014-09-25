@@ -1,7 +1,7 @@
 /*
     File: readme.txt
     Product:  iplog-to-sql-table
-    Rev 2014.0916.2030
+    Rev 2014.0924.2100
     Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
    
     Description:
@@ -20,7 +20,7 @@
         
         Usage:  ipl-to-db fname=logfilename dhname=dbhostname duname=dbusername
                 dupwd=dbuserpasswd dname=dbname tname=tblname hname=hostname
-                [insert] [maxl=number] [pbrk] [ibrk] [vmode=enum] [ioi]
+                [insert] [maxl=number] [maxdup=number] [pbrk] [ibrk] [vmode=enum] [ioi]
         
         Where:  fname=   IP log file name, (required)
         
@@ -43,6 +43,12 @@
                          file. Typically only used during debugging/testing.
                          If not specified, the program default is to read to
                          input IP log file EOF
+                         
+               maxdup=   Optional. Stop processing when this number of duplicate
+                         records is reached. Because duplicate are searched for
+                         from most recent in time to oldest, this will reduce
+                         the amount of unnecessary searching. Default is
+                         ITST_NO_LIMIT
                          
                   pbrk   Optional. No argument. Causes exit if a parse error
                          is encountered. Typically only used during
@@ -98,7 +104,7 @@
         - iplog-file.php - a class required for ipl-to-db.php
         - iplog-database.php - a class required for ipl-to-db.php
         - iplog-example.log - a short example IP log file used for testing
-        - itst-class-diagram.png - docmentation for developers
+        - itst-class-diagram.gif - docmentation for developers
         - README.md - project description on GitHub.com
         - LICENSE - A license file describing terms of use
         
@@ -119,7 +125,7 @@
                             File : "iplog-file.php"
                             File : "iplog-database.php"
                             File : "iplog-example.log"
-                            File : "itst-class-diagram.png"
+                            File : "itst-class-diagram.gif"
                             File : "LICENSE"
         
         Test "ipl-to-db.php" by executing:
@@ -150,7 +156,7 @@
         The next seven fields are those enumerated above, parsed from the IP
         log file.
     
-        The next field, "ThisHost", is the domain or IP address of the host,
+        The next field, "Host", is the domain or IP address of the host,
         (specified on the command line), for which the IP log file was created. 
     
         Lastly, the current time, "InsertionTime", is created on-the fly for

@@ -2,12 +2,12 @@
 /*
     File: iplog-database.php
     Product:  iplog-to-sql-table
-    Rev 2014.0916.2030
+    Rev 2014.0925.0850
     Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
    
     Description:
     
-        The IPlogDatabase class implements database access and data insertion
+        The IPlogEntriesData class implements database access and data insertion
         processes.
     
     Developer's notes:
@@ -52,7 +52,7 @@ define ( "IPLDB_ERR_IPL_RECORD_NULL", 103 );
 define ( "IPLDB_ERR_DB_PROBE_FAIL", 104 );
 define ( "IPLDB_ERR_DB_DUPLICATE_IPADDRESS", 105 );
 
-class IPlogDatabase {
+class IPlogEntriesData {
     
     private $db_host = NULL;
     private $db_user = NULL;
@@ -66,7 +66,7 @@ class IPlogDatabase {
     
     private $ipdb_verbosity_mode = 0;
 
-    public function IPlogDatabase (
+    public function IPlogEntriesData (
                                     $db_host = NULL,
                                     $db_user = NULL,
                                     $db_user_pwd = NULL,
@@ -81,20 +81,8 @@ class IPlogDatabase {
         $this->db_name = $db_name;
         $this->db_table_name = $db_table_name;
         $this->ipdb_verbosity_mode = $verbosity_mode;
-    }
-    
-    private function verbosity_echo ( $string, $verbosity_mode ) {
         
-        if ( $this->ipdb_verbosity_mode >= $verbosity_mode )
-            echo $string;
-    }
-    
-    public function insert_iplog_record ($ip_log_record = NULL ) 
-    {
-        if ( !$ip_log_record )
-            return IPLDB_ERR_IPL_RECORD_NULL;
-            
-        if ( $this->db_host && $this->db_user && $this->db_name && !$this->db_connection ) {
+        if ( $this->db_host && $this->db_user && $this->db_name ) {
             
             $this->db_connection =  new mysqli
                                             (
@@ -106,61 +94,82 @@ class IPlogDatabase {
             // Check db connection
             if ( $this->db_connection->connect_errno ) {
                 
-                $msg = "insert_iplog_record - Failed to connect to MySQL : " . mysqli_connect_error() . "\n";
+                $msg = "IPlogEntriesData - Failed to connect to MySQL : " . mysqli_connect_error() . "\n";
                 
                 $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
-            
-                return IPLDB_ERR_UNABLE_TO_CONNECT_DB;
-            }
-            
-            $msg = "\ninsert_iplog_record : Connected to MySQL.\n";
-            
-            $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
-            
-            // Create SQL table
-            $create_table_sql = "CREATE TABLE $this->db_table_name
-                                    (
-                                        IPid INT NOT NULL AUTO_INCREMENT,
-                                        PRIMARY KEY(IPid),
-                                        IPaddress TEXT,
-                                        DateTime TEXT,
-                                        MethodURI TEXT,
-                                        Status INT,
-                                        PageSize INT,
-                                        Referer TEXT,
-                                        Agent TEXT,
-                                        ThisHost TEXT,
-                                        InsertionTime TEXT
-                                    )";
-                    
-            $result = $this->db_connection->query ( $create_table_sql );
-            
-            if ( $result ) {
                 
-                $msg = "insert_iplog_record : Table '$this->db_table_name' created successfully\n";
+                $this->db_connection = NULL;
                 
-                $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
             } else {
-               
-                $msg = "insert_iplog_record : " . $this->db_connection->error . "\n";
+                
+                $msg = "IPlogEntriesData : Connected to MySQL.\n";
                 
                 $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
+                // Create SQL table
+                $create_table_sql = "CREATE TABLE $this->db_table_name
+                                        (
+                                            IPLid INT NOT NULL AUTO_INCREMENT,
+                                            PRIMARY KEY(IPLid),
+                                            DateTimeCreated TEXT NOT NULL,
+                                            IPaddress TEXT NOT NULL,
+                                            LogDateTime TEXT NOT NULL,
+                                            MethodURI TEXT NOT NULL,
+                                            Status INT NOT NULL,
+                                            PageSize INT NOT NULL,
+                                            Referer TEXT NOT NULL,
+                                            Agent TEXT NOT NULL,
+                                            Host TEXT NOT NULL
+                                        )";
+                        
+                $result = $this->db_connection->query ( $create_table_sql );
+                
+                if ( $result ) {
+                    
+                    $msg = "IPlogEntriesData : Table '$this->db_table_name' created successfully\n";
+                    
+                    $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                } else {
+                   
+                    $msg = "IPlogEntriesData : " . $this->db_connection->error . "\n";
+                    
+                    $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                }
             }
         }
+    }
+    
+    private function verbosity_echo ( $string, $verbosity_mode ) {
         
+        if ( $this->ipdb_verbosity_mode >= $verbosity_mode )
+            echo $string;
+    }
+    
+    public function insert_iplog_record ($ip_log_record = NULL ) {
+        
+        if ( !$ip_log_record )
+            return IPLDB_ERR_IPL_RECORD_NULL;
+            
+        if ( !$this->db_connection )
+            return IPLDB_ERR_UNABLE_TO_CONNECT_DB;
+            
+        $ip_log_record['MethodURI'] = $this->db_connection->real_escape_string ( $ip_log_record['MethodURI'] );
+        $ip_log_record['Referer'] = $this->db_connection->real_escape_string ( $ip_log_record['Referer'] );
+        $ip_log_record['Agent'] = $this->db_connection->real_escape_string ( $ip_log_record['Agent'] );
+
         // ensure we do not append a duplicate ip log record
         $probe_sql = "SELECT * FROM $this->db_table_name WHERE
                             IPaddress = '$ip_log_record[IPaddress]' and
-                            DateTime = '$ip_log_record[DateTime]' and
+                            LogDateTime = '$ip_log_record[LogDateTime]' and
                             MethodURI = '$ip_log_record[MethodURI]' and
                             Status = $ip_log_record[Status] and
                             PageSize = $ip_log_record[PageSize] and
                             Referer = '$ip_log_record[Referer]' and
                             Agent = '$ip_log_record[Agent]' and
-                            ThisHost = '$ip_log_record[ThisHost]'
+                            Host = '$ip_log_record[Host]'
                     ";
         
-        $result = $this->db_connection->query ($probe_sql);
+        $result = $this->db_connection->query ( $probe_sql );
         
         if ( !$result ) {
             
@@ -174,42 +183,42 @@ class IPlogDatabase {
         
         if ( $row ) {
             
-            $msg = "\ninsert_iplog_record : Record probe successful, duplicate record detected\n";
+            $msg = "insert_iplog_record : Record probe successful, duplicate record detected\n";
             
             $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                 
             return IPLDB_ERR_DB_DUPLICATE_IPADDRESS;
         }
         
-        $msg = "\ninsert_iplog_record : No duplicate record detected\n";
+        $msg = "insert_iplog_record : No duplicate record detected\n";
         
         $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                 
         $insert_sql = "INSERT INTO $this->db_table_name
                             (
-                                IPid,
+                                IPLid,
+                                DateTimeCreated,
                                 IPaddress,
-                                DateTime,
+                                LogDateTime,
                                 MethodURI,
                                 Status,
                                 PageSize,
                                 Referer,
                                 Agent,
-                                ThisHost,
-                                InsertionTime
+                                Host
                             )
                         VALUES
                             (
-                                $ip_log_record[IPid],
+                                $ip_log_record[IPLid],
+                                '$ip_log_record[DateTimeCreated]',
                                 '$ip_log_record[IPaddress]',
-                                '$ip_log_record[DateTime]',
+                                '$ip_log_record[LogDateTime]',
                                 '$ip_log_record[MethodURI]',
                                 $ip_log_record[Status],
                                 $ip_log_record[PageSize],
                                 '$ip_log_record[Referer]',
                                 '$ip_log_record[Agent]',
-                                '$ip_log_record[ThisHost]',
-                                '$ip_log_record[InsertionTime]'
+                                '$ip_log_record[Host]'
                             )";
         
             $result = $this->db_connection->query ($insert_sql);
@@ -220,7 +229,7 @@ class IPlogDatabase {
                 
                 $msg = "insert_iplog_record : Record insertion failed\n";
                 
-                $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+                $this->verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
                 
                 return IPLDB_ERR_DB_INSERTION_FAIL;
             }

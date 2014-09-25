@@ -2,7 +2,7 @@
 /*
     File: iplog-file.php
     Product:  iplog-to-sql-table
-    Rev 2014.0916.2030
+    Rev 2014.0924.2100
     Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
    
     Description:
@@ -18,7 +18,7 @@
         Seven fields are parsed from each line in the IP log file:
     
             - IPaddress
-            - DateTime
+            - LogDateTime
             - MethodURI
             - Status
             - PageSize
@@ -245,7 +245,7 @@ private $http_methods = array
         $ip_evnt_flds = array
                             (
                                 "IPaddress" => "",
-                                "DateTime" => "",
+                                "LogDateTime" => "",
                                 "MethodURI" => "",
                                 "Status" => 0,
                                 "PageSize" => 0,
@@ -288,18 +288,18 @@ private $http_methods = array
         $string_remainder = $this->ltrim_to_data ( $string_remainder, " - - [" );
     
         // get the date-time stamp string. If malformed, abort
-        $ip_evnt_flds [ "DateTime" ] = strstr ( $string_remainder, "]", TRUE );
+        $ip_evnt_flds [ "LogDateTime" ] = strstr ( $string_remainder, "]", TRUE );
         
-        if ( $ip_evnt_flds [ "DateTime" ] == FALSE ) {
+        if ( $ip_evnt_flds [ "LogDateTime" ] == FALSE ) {
             
-            $msg = "parse_lfln_array : DateTime field is malformed, parsing aborted for this record\n";
+            $msg = "parse_lfln_array : LogDateTime field is malformed, parsing aborted for this record\n";
             
             verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                 
             return NULL;
         }
         
-        $msg = "parse_lfln_array - DateTime : " .$ip_evnt_flds [ 'DateTime' ] . "\n";
+        $msg = "parse_lfln_array - LogDateTime : " .$ip_evnt_flds [ 'LogDateTime' ] . "\n";
         
         verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                 
