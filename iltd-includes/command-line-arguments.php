@@ -3,7 +3,7 @@
     File: command-line-arguments.php
     Product:  iplog-to-sql-table
     Rev 2014.0924.2100
-    Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
+    Copyright (C) 2014 Charles Thomaston - ckthomaston@dalorweb.com
    
     Description:
 

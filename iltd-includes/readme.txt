@@ -2,7 +2,7 @@
     File: readme.txt
     Product:  iplog-to-sql-table
     Rev 2014.0924.2100
-    Copyright (C) 2014 Charles Thomaston - ckthomaston@gmail.com
+    Copyright (C) 2014 Charles Thomaston - ckthomaston@dalorweb.com
    
     Description:
     
@@ -149,9 +149,9 @@
     
         Ten fields are inserted into the SQL db table:
     
-        The first is "IPid", which is the record index. It is always 0 so the
+        The first is "IPLid", which is the record index. It is always 0 so the
         query appends records, instead of inserting them at the specific table
-        record index given by IPid.
+        record index given by IPLid.
     
         The next seven fields are those enumerated above, parsed from the IP
         log file.

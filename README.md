@@ -146,9 +146,9 @@ Operation Details:
 
     Ten fields are inserted into the SQL db table:
 
-    The first is "IPid", which is the record index. It is always 0 so the
+    The first is "IPLid", which is the record index. It is always 0 so the
     query appends records, instead of inserting them at the specific table
-    record index given by IPid.
+    record index given by IPLid.
 
     The next seven fields are those enumerated above, parsed from the IP
     log file.
@@ -181,4 +181,4 @@ Disclaimer:
     owners.
 
 
-Copyright (C) Charles Thomaston - ckthomaston@gmail.com
+Copyright (C) Charles Thomaston - ckthomaston@dalorweb.com
