@@ -130,7 +130,7 @@
         
         Test "ipl-to-db.php" by executing:
         
-            php -f ipl-to-db.php
+            php ipl-to-db.php
             
         The result should be a usage display similar to shown above in
         "Description" section.

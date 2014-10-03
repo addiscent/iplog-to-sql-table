@@ -2,7 +2,7 @@
 /*
     File: iplog-file.php
     Product:  iplog-to-sql-table
-    Rev 2014.0924.2100
+    Rev 2014.1002.2200
     Copyright (C) 2014 Charles Thomaston - ckthomaston@dalorweb.com
    
     Description:
@@ -98,9 +98,9 @@
     define ( "CLA_VERBOSITY_MODE_SILENT", ... );
 */
 
-define ("IPLF_ERR_UNABLE_TO_OPEN_FILE", 101);
-define ("IPLF_EOF_IPLOG", 102);
-define ("IPLF_ERR_RECORD_LINE_NULL", 103);
+define ( "IPLF_ERR_UNABLE_TO_OPEN_FILE", 101 );
+define ( "IPLF_EOF_IPLOG", 102 );
+define ( "IPLF_ERR_RECORD_LINE_NULL", 103 );
 
 // if a parsed PageSize int field is "-", change it to -1
 define ("PAGESIZE_ADJUST_VALUE", -1);
@@ -202,9 +202,9 @@ private $http_methods = array
         
         $ip_record_line = fgets ( $this->ip_log_filehandle );
         
-        if ( !$ip_record_line ) {
+        if ( feof ( $this->ip_log_filehandle ) ) {
             
-            $msg = "\nget_iplog_record - IP log file returned EOF : Done parsing records.\n\n";
+            $msg = "\nget_iplog_record - IP log file returned EOF : Done parsing records.\n";
             
             verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
                 
@@ -276,6 +276,8 @@ private $http_methods = array
             
             verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                 
+            $return_msg = NULL;
+                        
             return NULL;
         }
         
@@ -296,6 +298,8 @@ private $http_methods = array
             
             verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                 
+            $return_msg = NULL;
+                        
             return NULL;
         }
         
@@ -319,15 +323,17 @@ private $http_methods = array
                 
                 case FALSE :
                     
-                    if ( $this->iplf_verbosity_mode == CLA_VERBOSITY_MODE_GENERAL)
-                        echo "\n"; // display formatting is driving me crazy
-
-                    $msg = "parse_lfln_array : IP log file line $ip_record_id MethodURI field is malformed, parsing aborted for this record\n";
+                    $msg = "parse_lfln_array : IP log file line $ip_record_id MethodURI field is malformed, parsing aborted for this record";
                     
-                    if ( $item_of_interest )
-                        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
+                    if ( $this->iplf_verbosity_mode == CLA_VERBOSITY_MODE_ALL )
+                        echo $msg;
                     else
-                        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                        if ( $item_of_interest && ( $this->iplf_verbosity_mode > CLA_VERBOSITY_MODE_SILENT ) )
+                            echo "\n". $msg;
+                        else
+                            verbosity_echo ( "\n". $msg, CLA_VERBOSITY_MODE_GENERAL );
+                        
+                    $return_msg = NULL;
                         
                     return NULL;
 
@@ -339,6 +345,8 @@ private $http_methods = array
                     
                     verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                 
+                    $return_msg = NULL;
+                        
                     return NULL;
                     
                 default :
@@ -363,6 +371,8 @@ private $http_methods = array
         
             verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                     
+            $return_msg = NULL;
+                        
             return NULL;
         }
         
@@ -396,6 +406,8 @@ private $http_methods = array
             
                 verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
                 
+                $return_msg = NULL;
+                        
                 return NULL;
             }
         }
@@ -417,6 +429,8 @@ private $http_methods = array
             
             verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
 
+            $return_msg = NULL;
+                        
             return NULL;
         }
         
@@ -437,6 +451,8 @@ private $http_methods = array
             
             verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
     
+            $return_msg = NULL;
+                        
             return NULL;
         }
         
@@ -444,8 +460,12 @@ private $http_methods = array
         
         verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
         
-        $return_msg = "parse_lfln_array : Completed with no errors\n";
+        $msg = "parse_lfln_array : Completed with no errors\n";
 
+        verbosity_echo ( $msg, CLA_VERBOSITY_MODE_ALL );
+        
+        $return_msg = NULL;
+                        
         return $ip_evnt_flds;
     }
 }

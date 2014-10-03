@@ -2,7 +2,7 @@
 /*
     File: ipl-to-db.php
     Product:  iplog-to-sql-table
-    Rev 2014.0925.0800
+    Rev 2014.1002.2200
     Copyright (C) 2014 Charles Thomaston - ckthomaston@dalorweb.com
    
     Description:
@@ -131,7 +131,7 @@
         
         Test "ipl-to-db.php" by executing:
         
-            php -f ipl-to-db.php
+            php ipl-to-db.php
             
         The result should be a usage display similar to shown above in
         "Description" section.
@@ -242,7 +242,7 @@ $CommandLineData = new CommandLineArguments (); // process command line
 
 $verbosity_mode = $CommandLineData->get_verbosity_mode ( $return_msg [ 'vmode' ] ); // out string not used here
 
-$msg = "ipl-to-db.php v2014.0925.0800\n";
+$msg = "ipl-to-db.php v2014.1002.1800\n";
 
 verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
                 
@@ -360,45 +360,53 @@ $loop_break = FALSE;
 $ip_log_events = array ();
 
 // only process number of lines specified on command line
-for ( $i = 0, $array_index = 0; ( $i < $max_file_lines ) && ( !$loop_break ); $i++ ) { 
-
+for ( $i = 0, $array_index = 0; $i < $max_file_lines; $i++ ) { 
+    
     $ip_event_flds = $IPlogFile->get_iplog_record(($logfile_lines_read + 1), $ip_record_line, $item_of_interest, $out_msg);
     
     if ( $ip_event_flds == IPLF_ERR_UNABLE_TO_OPEN_FILE )
         exit ( CLI_ERR_UNABLE_TO_OPEN_FILE );
 
-    if  ($ip_event_flds == IPLF_EOF_IPLOG )
-        break;
+    if  ( $ip_event_flds != IPLF_EOF_IPLOG ) {
 
-    $logfile_lines_read++;
-    
-    if ( $ip_event_flds ) // we have a populated $ip_event_flds array, add it to the IP log events list
-    
-        $ip_log_events [ $array_index++ ] = $ip_event_flds;
+        $logfile_lines_read++;
         
-    else { // $ip_event_flds == NULL
-    
-        $parse_fail_count++;
+        if ( $ip_event_flds ) // we have a populated $ip_event_flds array, add it to the IP log events list
         
-        $msg = "IP log file line $logfile_lines_read contents : $ip_record_line"
-                . "NOTICE : IP log file line $logfile_lines_read parse or validation failed, skipping this line without inserting into SQL table.\n";
+            $ip_log_events [ $array_index++ ] = $ip_event_flds;
             
-        if ( $item_of_interest )
-            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
-        else
-            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
-                        
-        if ($parse_fail_break) {
-
-            $msg = "pbrk : IP log file line parse failed, no more IP log lines will be read.\n";
+        else { // $ip_event_flds == NULL
+        
+            $parse_fail_count++;
             
-            verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+            if ( $verbosity_mode == CLA_VERBOSITY_MODE_GENERAL)
+                    echo "\n";
             
-            break;
+            $msg = "IP log file line $logfile_lines_read contents : $ip_record_line"
+                    . "NOTICE : IP log file line $logfile_lines_read parse or validation failed, skipping this line without inserting into SQL table.\n";
+                
+            if ( ( $verbosity_mode == CLA_VERBOSITY_MODE_LOG ) && ( $item_of_interest ) )
+                echo "\n";
+            
+            if ( $item_of_interest )
+                verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
+            else
+                verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                            
+            if ($parse_fail_break) {
+    
+                $msg = "pbrk : IP log file line parse failed, no more IP log lines will be read.\n";
+                
+                verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
+                
+                break;
+            }
         }
-    }
+        
+    } else
+        break;
 }
-    
+
 $reversed_ip_log_events = array_reverse ( $ip_log_events );  // we want to start with the most recent entry in log, not oldest
 
 $duplicate_event_count = 0;
@@ -417,13 +425,29 @@ $ip_log_record = array
                         "Host" => ""
                     );
     
+$insert_loop_count = 0;
+
+define ("HEARTBEAT_COUNT", 3);
+
+$hearbeat_count = 0; // echo a hearbeat once in a while
+
 // we have a populated $ip_event_flds array, insert it into the db.  Because we are traversing
 // the list from most recent, if we reach an entry which already exists in the table, we are done
 foreach ($reversed_ip_log_events as $ip_event_flds) {
     
     if ( ( $duplicate_event_count < $duplicate_event_max ) || ( $duplicate_event_max == ITST_NO_DUP_LIMIT ) ){
         
-        if ($insert_record_option) {  // if insert-record-option set, do insertion
+        if ( $insert_record_option ) {  // if insert-record-option set, do insertion
+ 
+            $insert_loop_count++;
+           
+            if ( ( intval ( $insert_loop_count / HEARTBEAT_COUNT ) != $hearbeat_count )
+                   && ( $verbosity_mode == CLA_VERBOSITY_MODE_GENERAL ) )
+                {
+                    verbosity_echo ( ".", CLA_VERBOSITY_MODE_GENERAL );
+                    
+                    $hearbeat_count = intval ( $insert_loop_count / HEARTBEAT_COUNT );
+                }
         
             $ip_log_record [ 'IPLid' ] = $ip_event_number;
             $ip_log_record [ 'DateTimeCreated' ] = date ( "Y.md.Hi.s" );
@@ -482,8 +506,6 @@ foreach ($reversed_ip_log_events as $ip_event_flds) {
                         $msg = "ibrk : SQL insertion failed, no more IP log lines will be read.\n";
                         
                         verbosity_echo ( $msg, CLA_VERBOSITY_MODE_LOG );
-                
-                        $loop_break = TRUE;
                     }
                     
                     break;
@@ -545,6 +567,12 @@ $elapsed_time = $end_time - $start_time;
 
 $elapsed_time = date ( "H:i:s",$elapsed_time );
 
+if ( $hearbeat_count && ( $verbosity_mode > CLA_VERBOSITY_MODE_LOG )  ) // if we possibly echoed a heartbeat dot earlier, do newlines
+    echo "\n\n";
+
+if ( ( $verbosity_mode == CLA_VERBOSITY_MODE_LOG ) && ( $item_of_interest ) && $parse_fail_count)
+    echo "\n";
+            
 $msg = "Elapsed time (hr:min:sec) : $elapsed_time\n"
         . "Records inserted into SQL table : $lines_inserted\n"
         . "Duplicate record insertions skipped : $duplicate_event_count\n"
