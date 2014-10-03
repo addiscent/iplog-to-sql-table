@@ -427,7 +427,7 @@ $ip_log_record = array
     
 $insert_loop_count = 0;
 
-define ("HEARTBEAT_COUNT", 3);
+define ("HEARTBEAT_COUNT", 100 );
 
 $hearbeat_count = 0; // echo a hearbeat once in a while
 
