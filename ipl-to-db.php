@@ -3,7 +3,7 @@
     File: ipl-to-db.php
     Product:  iplog-to-sql-table
     Rev 2014.1002.2200
-    Copyright (C) 2014 Charles Thomaston - ckthomaston@dalorweb.com
+    Copyright (C) 2016 Rex Addiscentis - raddiscentis@addiscent.com
    
     Description:
     
@@ -250,7 +250,7 @@ $msg = "Inserts parsed IP log file line fields into an SQL db.\n";
 
 verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
                 
-$msg = "copyright (C) 2014 Charles Thomaston - ckthomaston@dalorweb.com\n";
+$msg = "copyright (C) 2016 Rex Addiscentis - raddiscentis@addiscent.com\n";
 
 verbosity_echo ( $msg, CLA_VERBOSITY_MODE_GENERAL );
                 

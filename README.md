@@ -101,7 +101,6 @@ Files:
     - iplog-file.php - a class required for ipl-to-db.php
     - iplog-database.php - a class required for ipl-to-db.php
     - iplog-example.log - a short example IP log file used for testing
-    - itst-class-diagram.gif - docmentation for developers
     - README.md - project description on GitHub.com
     - LICENSE - A license file describing terms of use
     
@@ -181,4 +180,4 @@ Disclaimer:
     owners.
 
 
-Copyright (C) Charles Thomaston - ckthomaston@dalorweb.com
+Copyright (C) Rex Addiscentis - raddiscentis@addiscent.com

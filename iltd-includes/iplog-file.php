@@ -3,7 +3,7 @@
     File: iplog-file.php
     Product:  iplog-to-sql-table
     Rev 2014.1002.2200
-    Copyright (C) 2014 Charles Thomaston - ckthomaston@dalorweb.com
+    Copyright (C) 2016 Rex Addiscentis - raddiscentis@addiscent.com
    
     Description:
     

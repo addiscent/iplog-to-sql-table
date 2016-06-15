@@ -2,7 +2,7 @@
     File: readme.txt
     Product:  iplog-to-sql-table
     Rev 2014.0924.2100
-    Copyright (C) 2014 Charles Thomaston - ckthomaston@dalorweb.com
+    Copyright (C) 2016 Rex Addiscentis - raddiscentis@addiscent.com
    
     Description:
     
@@ -104,7 +104,6 @@
         - iplog-file.php - a class required for ipl-to-db.php
         - iplog-database.php - a class required for ipl-to-db.php
         - iplog-example.log - a short example IP log file used for testing
-        - itst-class-diagram.gif - docmentation for developers
         - README.md - project description on GitHub.com
         - LICENSE - A license file describing terms of use
         
